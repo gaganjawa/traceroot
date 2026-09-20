@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environment
+.venv/
+
+# Environment / secrets
+.env
+.env.*
+
+# Keep example environment file
+!.env.example
+
+# IDE / macOS
+.idea/
+.vscode/
+.DS_Store
+
+# Generated experiment outputs
+experiments/results/
