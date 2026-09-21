@@ -15,8 +15,8 @@
 
 | **Epic** | **Scope**                      | **Status**     |
 | -------- | ------------------------------ | -------------- |
-| Epic 0   | Foundation                     | 🟡 IN PROGRESS |
-| Epic 1   | Synthetic Incident Environment | ⬜ TODO         |
+| Epic 0   | Foundation                     | ✅ DONE         |
+| Epic 1   | Synthetic Incident Environment | 🟡 IN PROGRESS |
 | Epic 2   | RAG Baseline                   | ⬜ TODO         |
 | Epic 3   | Operational Evidence Tools     | ⬜ TODO         |
 | Epic 4   | Agentic Investigation          | ⬜ TODO         |
@@ -36,7 +36,7 @@ Build the contracts and project structure everything else depends on.
 | ✅         | TR-001     | Project Setup          | 1h           |
 | ✅         | TR-002     | Core Domain Models     | 1h           |
 | ✅         | TR-003     | Evaluation Contracts   | 1h           |
-| 🟡         | TR-004     | Incident Data Contract | 1h           |
+| ✅         | TR-004     | Incident Data Contract | 1h           |
 
 ### TR-001 — Project Setup
 
@@ -98,15 +98,29 @@ Implemented:
   - optional execution metrics
 - Evaluation schema tests
 
-**Result:** 18 tests passing at completion of TR-003.
+**Result:** 17 tests passing at completion of TR-003.
 
 ### TR-004 — Incident Data Contract
 
-**Status:** 🟡 IN PROGRESS  
+**Status:** ✅ DONE  
 **Estimate:** 1h
 
-Define the on-disk structure and validation rules for synthetic incidents,
-operational evidence, and hidden ground truth.
+Defined the storage and validation contract for synthetic incident data.
+
+Implemented:
+
+- Separate agent-visible incident data from hidden ground truth
+- `LogEntry`
+- `MetricEntry`
+- `DeploymentEntry`
+- `CodeChangeEntry`
+- `IncidentDataset`
+- `load_incident()`
+- `load_incident_dataset()`
+- JSONL log loading
+- JSON array loading for metrics, deployments, and changes
+- Dataset loader tests
+- Ground truth excluded from `IncidentDataset`
 
 ---
 
@@ -116,21 +130,39 @@ Create a controlled production-like environment without using company data.
 
 | **Status** | **Ticket** | **Task**                         | **Estimate** |
 | ---------- | ---------- | -------------------------------- | ------------ |
-| ⬜         | TR-005     | Initial Incident Dataset         | 2h           |
+| 🟡         | TR-005     | Initial Incident Dataset         | 2h           |
 | ⬜         | TR-006     | Distractors & Dataset Validation | 1h           |
 | ⬜         | TR-007     | Engineering Knowledge Corpus     | 2h           |
 
 ### TR-005 — Initial Incident Dataset
 
+**Status:** 🟡 IN PROGRESS  
+**Estimate:** 2h
+
 Create the first synthetic incidents with logs, metrics, deployments,
 code changes, and hidden ground truth.
 
+Initial target:
+
+- 3 synthetic incidents
+- Different root-cause categories
+- Realistic operational evidence
+- Fixed hidden ground truth
+- Stable evidence IDs
+- No root-cause leakage through `incident.json`
+
 ### TR-006 — Distractors & Dataset Validation
+
+**Status:** ⬜ TODO  
+**Estimate:** 1h
 
 Add realistic irrelevant/neutral evidence and validate that incidents do not
 leak their answers.
 
 ### TR-007 — Engineering Knowledge Corpus
+
+**Status:** ⬜ TODO  
+**Estimate:** 2h
 
 Create synthetic architecture documentation, runbooks, engineering guidance,
 and historical incident documentation for retrieval.
@@ -409,19 +441,20 @@ the abstraction does not change investigation correctness.
 
 ## 🟡 In Progress
 
-- TR-004 — Incident Data Contract
+- TR-005 — Initial Incident Dataset
 
 ## ⬜ Next Up
 
-- TR-005 — Initial Incident Dataset
 - TR-006 — Distractors & Dataset Validation
 - TR-007 — Engineering Knowledge Corpus
+- TR-008 — Document Loading & Chunking
 
 ## ✅ Done
 
 - TR-001 — Project Setup
 - TR-002 — Core Domain Models
 - TR-003 — Evaluation Contracts
+- TR-004 — Incident Data Contract
 
 ## 🟣 Stretch
 
@@ -447,15 +480,21 @@ the abstraction does not change investigation correctness.
 
 # Current Focus
 
-**TR-004 — Incident Data Contract**
+**TR-005 — Initial Incident Dataset**
 
 Goal:
 
-Define the on-disk structure and validation rules for synthetic incidents,
-operational evidence, and hidden ground truth.
+Create the first synthetic production incidents that will later be investigated
+by both the knowledge-only RAG baseline and the agentic investigation system.
 
-The contract should establish how incident data is organized before we begin
-creating the synthetic incident dataset in TR-005.
+Each incident should contain realistic operational evidence and independently
+defined hidden ground truth.
 
-Ground truth must remain evaluation-only and must never be exposed to the
-RAG pipeline or investigation agent.
+Initial target:
+
+- 3 incidents
+- Different root-cause categories
+- Logs, metrics, deployments, and code changes
+- Stable evidence IDs
+- Hidden ground truth stored separately
+- No direct root-cause leakage through incident descriptions
