@@ -1,0 +1,11 @@
+[
+  {
+    "id": "CHANGE-002-01",
+    "timestamp": "2026-09-21T08:50:00Z",
+    "service": "payment-service",
+    "commit_sha": "f91bd72",
+    "files": ["src/payment/provider_mapper.py"],
+    "description": "Updated payment provider request mapping",
+    "diff": "- payload[\"currency\"] = currency.code\n+ payload[\"currency\"] = str(currency)"
+  }
+]

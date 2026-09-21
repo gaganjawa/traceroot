@@ -1,0 +1,8 @@
+{"id":"LOG-002-01","timestamp":"2026-09-21T09:15:03Z","service":"checkout-service","level":"INFO","message":"Payment authorization request created successfully"}
+{"id":"LOG-002-02","timestamp":"2026-09-21T09:15:05Z","service":"payment-service","level":"ERROR","message":"Payment provider authorization request rejected with HTTP 400"}
+{"id":"LOG-002-03","timestamp":"2026-09-21T09:15:05Z","service":"payment-service","level":"ERROR","message":"Provider validation error: invalid currency format in authorization request"}
+{"id":"LOG-002-04","timestamp":"2026-09-21T09:15:06Z","service":"checkout-service","level":"ERROR","message":"Payment authorization failed due to provider validation error"}
+{"id":"LOG-002-05","timestamp":"2026-09-21T09:15:07Z","service":"fraud-detection-service","level":"INFO","message":"Fraud check completed successfully for order ORDER-5622"}
+{"id":"LOG-002-06","timestamp":"2026-09-21T09:15:08Z","service":"payment-service","level":"ERROR","message":"Payment authorization request rejected with HTTP 400"}
+{"id":"LOG-002-07","timestamp":"2026-09-21T09:15:08Z","service":"payment-service","level":"ERROR","message":"Provider validation error: invalid currency format in authorization request"}
+{"id":"LOG-002-08","timestamp":"2026-09-21T09:15:09Z","service":"checkout-service","level":"ERROR","message":"Payment authorization failed due to provider validation error"}

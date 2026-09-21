@@ -1,0 +1,10 @@
+{"id":"LOG-003-01","timestamp":"2026-09-22T11:00:04Z","service":"order-worker","level":"INFO","message":"Order ORD-28491 received for asynchronous processing"}
+{"id":"LOG-003-02","timestamp":"2026-09-22T11:00:09Z","service":"order-worker","level":"ERROR","message":"Inventory reservation request timed out after 5000ms"}
+{"id":"LOG-003-03","timestamp":"2026-09-22T11:00:10Z","service":"order-worker","level":"WARN","message":"Retrying inventory reservation after downstream timeout"}
+{"id":"LOG-003-04","timestamp":"2026-09-22T11:00:15Z","service":"order-worker","level":"ERROR","message":"Inventory reservation request timed out after 5000ms"}
+{"id":"LOG-003-05","timestamp":"2026-09-22T11:00:16Z","service":"order-worker","level":"WARN","message":"Retrying inventory reservation after downstream timeout"}
+{"id":"LOG-003-06","timestamp":"2026-09-22T11:00:21Z","service":"order-worker","level":"ERROR","message":"Inventory reservation request timed out after 5000ms"}
+{"id":"LOG-003-07","timestamp":"2026-09-22T11:00:22Z","service":"order-worker","level":"WARN","message":"Retrying inventory reservation after downstream timeout"}
+{"id":"LOG-003-08","timestamp":"2026-09-22T11:00:27Z","service":"order-worker","level":"ERROR","message":"Inventory reservation request timed out after 5000ms"}
+{"id":"LOG-003-09","timestamp":"2026-09-22T11:00:28Z","service":"order-worker","level":"WARN","message":"Retrying inventory reservation after downstream timeout"}
+{"id":"LOG-003-10","timestamp":"2026-09-22T11:00:33Z","service":"order-worker","level":"ERROR","message":"Inventory reservation request timed out after 5000ms"}

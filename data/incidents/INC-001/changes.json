@@ -1,0 +1,11 @@
+[
+  {
+    "id": "CHANGE-001-01",
+    "timestamp": "2026-09-20T14:18:00Z",
+    "service": "checkout-service",
+    "commit_sha": "8e32ac1",
+    "files": ["config/application.yaml"],
+    "description": "Database connection pool configuration update",
+    "diff": "- maximumPoolSize: 100\n+ maximumPoolSize: 20"
+  }
+]

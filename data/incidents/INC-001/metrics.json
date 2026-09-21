@@ -1,0 +1,26 @@
+[
+  {
+    "id": "METRIC-001-01",
+    "timestamp": "2026-09-20T14:31:00Z",
+    "service": "checkout-service",
+    "metric": "http_request_duration_p95",
+    "value": 2400.0,
+    "unit": "ms"
+  },
+  {
+    "id": "METRIC-001-02",
+    "timestamp": "2026-09-20T14:31:00Z",
+    "service": "checkout-service",
+    "metric": "db_active_connections",
+    "value": 20,
+    "unit": "count"
+  },
+  {
+    "id": "METRIC-001-03",
+    "timestamp": "2026-09-20T14:31:00Z",
+    "service": "checkout-service",
+    "metric": "db_connection_waiters",
+    "value": 37,
+    "unit": "count"
+  }
+]

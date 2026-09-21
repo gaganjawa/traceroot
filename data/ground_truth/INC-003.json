@@ -1,0 +1,12 @@
+{
+  "incident_id": "INC-003",
+  "root_cause": "Inventory-service requests were timing out, causing order-worker retries and an increasing order-processing backlog.",
+  "root_cause_category": "downstream_dependency_failure",
+  "affected_service": "order-worker",
+  "supporting_evidence_ids": [
+    "LOG-003-02",
+    "LOG-003-03",
+    "METRIC-003-01",
+    "METRIC-003-02"
+  ]
+}

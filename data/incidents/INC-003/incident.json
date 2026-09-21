@@ -1,0 +1,7 @@
+{
+  "id": "INC-003",
+  "title": "Order processing backlog",
+  "description": "Orders are accepted successfully, but asynchronous order processing is delayed. Customers are experiencing delayed order confirmations and the processing backlog is increasing.",
+  "start_time": "2026-09-22T11:00:00Z",
+  "suspected_services": []
+}

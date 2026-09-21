@@ -1,0 +1,26 @@
+[
+  {
+    "id": "METRIC-003-01",
+    "timestamp": "2026-09-22T11:01:00Z",
+    "service": "order-worker",
+    "metric": "order_processing_queue_depth",
+    "value": 1842,
+    "unit": "count"
+  },
+  {
+    "id": "METRIC-003-02",
+    "timestamp": "2026-09-22T11:01:00Z",
+    "service": "inventory-service",
+    "metric": "http_request_duration_p95",
+    "value": 5200,
+    "unit": "ms"
+  },
+  {
+    "id": "METRIC-003-03",
+    "timestamp": "2026-09-22T11:01:00Z",
+    "service": "order-worker",
+    "metric": "cpu_utilization",
+    "value": 31,
+    "unit": "percent"
+  }
+]

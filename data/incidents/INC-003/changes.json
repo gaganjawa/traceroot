@@ -1,0 +1,11 @@
+[
+  {
+    "id": "CHANGE-003-01",
+    "timestamp": "2026-09-21T14:30:00Z",
+    "service": "order-worker",
+    "commit_sha": "2c84ef5",
+    "files": ["src/order/logging.py"],
+    "description": "Improved order processing diagnostic logging",
+    "diff": "- logger.info(\"Processing order\")\n+ logger.info(\"Processing order %s\", order_id)"
+  }
+]

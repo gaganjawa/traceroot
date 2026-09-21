@@ -1,0 +1,13 @@
+{
+  "incident_id": "INC-001",
+  "root_cause": "The checkout-service database connection pool maximum size was reduced from 100 to 20, causing connection contention and checkout request timeouts.",
+  "root_cause_category": "configuration_regression",
+  "affected_service": "checkout-service",
+  "supporting_evidence_ids": [
+    "LOG-001-02",
+    "LOG-001-03",
+    "METRIC-001-02",
+    "METRIC-001-03",
+    "CHANGE-001-01"
+  ]
+}

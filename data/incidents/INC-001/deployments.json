@@ -1,0 +1,9 @@
+[
+  {
+    "id": "DEPLOY-001-01",
+    "timestamp": "2026-09-20T14:20:00Z",
+    "service": "checkout-service",
+    "version": "v2.4.1",
+    "description": "Checkout service production deployment"
+  }
+]

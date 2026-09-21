@@ -1,0 +1,11 @@
+{
+  "id": "INC-001",
+  "title": "Checkout API latency and timeout increase",
+  "description": "Customers are experiencing elevated checkout latency and intermittent timeouts. Multiple checkout requests exceed the normal response-time range.",
+  "start_time": "2026-09-20T14:30:00Z",
+  "suspected_services": [
+    "checkout-service",
+    "payment-service",
+    "database-service"
+  ]
+}

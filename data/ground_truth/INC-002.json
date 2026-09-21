@@ -1,0 +1,13 @@
+{
+  "incident_id": "INC-002",
+  "root_cause": "The payment-service v3.7.0 request-mapping change serialized the currency field incorrectly, causing the payment provider to reject authorization requests.",
+  "root_cause_category": "code_regression",
+  "affected_service": "payment-service",
+  "supporting_evidence_ids": [
+    "LOG-002-02",
+    "LOG-002-03",
+    "METRIC-002-01",
+    "DEPLOY-002-01",
+    "CHANGE-002-01"
+  ]
+}

@@ -1,0 +1,9 @@
+[
+  {
+    "id": "DEPLOY-003-01",
+    "timestamp": "2026-09-21T15:00:00Z",
+    "service": "order-worker",
+    "version": "v5.2.0",
+    "description": "Order worker production deployment"
+  }
+]

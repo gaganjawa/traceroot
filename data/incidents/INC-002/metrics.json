@@ -1,0 +1,18 @@
+[
+  {
+    "id": "METRIC-002-01",
+    "timestamp": "2026-09-21T09:16:00Z",
+    "service": "payment-service",
+    "metric": "authorization_failure_rate",
+    "value": 18.0,
+    "unit": "percent"
+  },
+  {
+    "id": "METRIC-002-02",
+    "timestamp": "2026-09-21T09:16:00Z",
+    "service": "payment-service",
+    "metric": "http_request_duration_p95",
+    "value": 210.0,
+    "unit": "ms"
+  }
+]

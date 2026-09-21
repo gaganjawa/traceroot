@@ -1,0 +1,7 @@
+{"id":"LOG-001-01","timestamp":"2026-09-20T14:30:12Z","service":"checkout-service","level":"INFO","message":"Checkout request received for cart CART-8472"}
+{"id":"LOG-001-02","timestamp":"2026-09-20T14:30:14Z","service":"checkout-service","level":"WARN","message":"Database connection acquisition took 1842ms"}
+{"id":"LOG-001-03","timestamp":"2026-09-20T14:30:18Z","service":"checkout-service","level":"ERROR","message":"Timed out waiting for database connection after 2000ms"}
+{"id":"LOG-001-04","timestamp":"2026-09-20T14:30:20Z","service":"payment-service","level":"INFO","message":"Payment authorization request sent for order ORDER-5621"}
+{"id":"LOG-001-05","timestamp":"2026-09-20T14:30:22Z","service":"payment-service","level":"ERROR","message":"Payment authorization failed due to timeout"}
+{"id":"LOG-001-06","timestamp":"2026-09-20T14:30:25Z","service":"database-service","level":"WARN","message":"Database query execution time exceeded threshold: 2500ms"}
+{"id":"LOG-001-07","timestamp":"2026-09-20T14:30:28Z","service":"checkout-service","level":"ERROR","message":"Checkout request failed due to database timeout"}

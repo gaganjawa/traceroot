@@ -1,0 +1,9 @@
+{
+  "id": "INC-002",
+  "title": "Payment authorization failures",
+  "description": "Payment authorization failure rates increased shortly after 09:15. Customers can create checkout sessions but some payments fail during authorization.",
+  "start_time": "2026-09-21T09:15:00Z",
+  "suspected_services": [
+    "checkout-service"
+  ]
+}
