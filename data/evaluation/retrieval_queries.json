@@ -1,0 +1,52 @@
+[
+  {
+    "id": "RQ-001",
+    "query": "What can cause checkout requests to become slow?",
+    "relevant_sources": ["checkout-runbook.md"]
+  },
+  {
+    "id": "RQ-002",
+    "query": "What should I check when checkout latency spikes or requests start timing out?",
+    "relevant_sources": ["checkout-runbook.md"]
+  },
+  {
+    "id": "RQ-003",
+    "query": "Why do payment authorization failures happen and which signals should I inspect?",
+    "relevant_sources": ["payment-runbook.md"]
+  },
+  {
+    "id": "RQ-004",
+    "query": "How do payment provider validation errors indicate a bad request or field mapping issue?",
+    "relevant_sources": ["payment-runbook.md"]
+  },
+  {
+    "id": "RQ-005",
+    "query": "What symptoms indicate an order processing backlog or retry storm?",
+    "relevant_sources": ["order-processing-runbook.md"]
+  },
+  {
+    "id": "RQ-006",
+    "query": "How can downstream dependency latency affect order-worker throughput and queue depth?",
+    "relevant_sources": ["order-processing-runbook.md"]
+  },
+  {
+    "id": "RQ-007",
+    "query": "What is the end-to-end flow from checkout through payment and asynchronous order processing?",
+    "relevant_sources": ["architecture.md"]
+  },
+  {
+    "id": "RQ-008",
+    "query": "How should an investigator localize a customer-visible failure to the right service in the commerce platform?",
+    "relevant_sources": ["architecture.md"]
+  },
+  {
+    "id": "RQ-009",
+    "query": "What is the difference between correlation and causation during a production incident investigation?",
+    "relevant_sources": ["incident-investigation-guide.md"]
+  },
+  {
+    "id": "RQ-010",
+    "query": "What evidence should support a root-cause conclusion for a production incident?",
+    "relevant_sources": ["incident-investigation-guide.md"]
+  }
+]
