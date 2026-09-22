@@ -132,8 +132,8 @@ Completed:
 | TR-008 | Document Loading & Chunking | 1h | ✅ DONE |
 | TR-009 | Embeddings + Qdrant Indexing | 1.5h | ✅ DONE |
 | TR-010 | Semantic Retriever | 1.5h | ✅ DONE |
-| TR-011 | Retrieval Evaluation Dataset | 1h | 🟡 IN PROGRESS |
-| TR-012 | Recall@K Evaluator | 1h | ⬜ TODO |
+| TR-011 | Retrieval Evaluation Dataset | 1h | ✅ DONE |
+| TR-012 | Recall@K Evaluator | 1h | 🟡 IN PROGRESS |
 | TR-013 | Vanilla RAG Baseline | 2h | ⬜ TODO |
 | TR-014 | Baseline Experiment Tracking | 1h | ⬜ TODO |
 
@@ -182,6 +182,19 @@ Completed:
 - OpenAI embedding mocked in unit tests
 - Real knowledge-corpus retrieval manually verified
 - 47 tests passing across project at ticket completion
+
+### TR-011 — Retrieval Evaluation Dataset
+
+Completed:
+- Fixed 10-query retrieval benchmark
+- Coverage across all five knowledge documents
+- Varied natural-language query phrasing
+- Explicit relevant-source labels
+- Typed RetrievalEvaluationCase model
+- Non-empty relevant-source validation
+- Evaluation dataset loader
+- Loader and validation tests
+- 52 tests passing across project at ticket completion
 
 ---
 
@@ -262,13 +275,13 @@ MCP must not delay the core experiment.
 
 ## IN PROGRESS
 
-- TR-011 — Retrieval Evaluation Dataset
+- TR-012 — Recall@K Evaluator
 
 ## NEXT UP
 
-- TR-012 — Recall@K Evaluator
 - TR-013 — Vanilla RAG Baseline
 - TR-014 — Baseline Experiment Tracking
+- TR-015 — Logs Tool
 
 ## DONE
 
@@ -282,6 +295,7 @@ MCP must not delay the core experiment.
 - TR-008 — Document Loading & Chunking
 - TR-009 — Embeddings + Qdrant Indexing
 - TR-010 — Semantic Retriever
+- TR-011 — Retrieval Evaluation Dataset
 
 ## STRETCH
 
@@ -307,25 +321,19 @@ MCP must not delay the core experiment.
 
 # Current Focus
 
-## TR-011 — Retrieval Evaluation Dataset
+## TR-012 — Recall@K Evaluator
 
-Create a fixed evaluation dataset for measuring whether the semantic retriever returns the knowledge documents relevant to a query.
+Measure whether expected relevant knowledge sources appear within the first K retrieved results.
 
-Flow:
+Formula:
 
-Evaluation query
-→ predefined relevant source(s)
-→ semantic retriever
-→ retrieved top-K sources
-→ TR-012 Recall@K evaluation
+Recall@K = number of unique relevant sources retrieved in top K / total number of unique relevant sources
 
 Acceptance criteria:
 
-- Fixed retrieval-evaluation dataset exists.
-- Dataset contains queries covering the knowledge corpus.
-- Each query defines one or more expected relevant sources.
-- Expected sources are determined from document content, not current retriever output.
-- Pydantic model represents an evaluation case.
-- Loader parses the dataset into typed evaluation cases.
-- Invalid evaluation cases fail validation.
-- Dataset and loader are covered by tests.
+- Computes Recall@K deterministically.
+- Supports configurable K.
+- Duplicate retrieved sources do not receive extra credit.
+- Rejects non-positive K.
+- Rejects empty relevant-source sets.
+- Unit tests cover full, partial, zero and duplicate-source recall.
