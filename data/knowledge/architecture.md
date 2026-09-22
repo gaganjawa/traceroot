@@ -1,3 +1,10 @@
+---
+document_type: architecture
+service: platform
+topic: system-architecture
+---
+# Commerce Platform Architecture
+
 ## End-to-End Checkout and Order Flow
 
 A successful customer order typically follows this path:
