@@ -2,7 +2,10 @@ from traceroot.data.models import IncidentDataset
 from traceroot.domain.ground_truth import GroundTruth
 
 
-def validate_incident_dataset(dataset: IncidentDataset, ground_truth: GroundTruth,) -> list[str]:
+def validate_incident_dataset(
+    dataset: IncidentDataset,
+    ground_truth: GroundTruth,
+) -> list[str]:
     """
     Validate the incident dataset against the ground truth.
 
@@ -22,14 +25,22 @@ def validate_incident_dataset(dataset: IncidentDataset, ground_truth: GroundTrut
             f"ground truth has {ground_truth.incident_id}"
         )
     # Validate every evidence ID is unique
-    evidence_ids = [evidence.id for evidence in dataset.logs + dataset.metrics + dataset.deployments + dataset.changes]
+    evidence_ids = [
+        evidence.id
+        for evidence in dataset.logs
+        + dataset.metrics
+        + dataset.deployments
+        + dataset.changes
+    ]
     if len(evidence_ids) != len(set(evidence_ids)):
         errors.append("Evidence IDs are not unique.")
 
     # Validate every ground_truth.supporting_evidence_id exists in the incident's operational evidence
     for evidence_id in ground_truth.supporting_evidence_ids:
         if evidence_id not in evidence_ids:
-            errors.append(f"Supporting evidence ID {evidence_id} not found in the incident dataset.")
+            errors.append(
+                f"Supporting evidence ID {evidence_id} not found in the incident dataset."
+            )
 
     # Validate ground_truth.affected_service is non-empty
     if not ground_truth.affected_service.strip():

@@ -1,6 +1,4 @@
-from datetime import datetime, timezone
-
-from traceroot.data.validator import validate_incident_dataset
+from datetime import UTC, datetime
 
 from traceroot.data.models import (
     CodeChangeEntry,
@@ -9,12 +7,13 @@ from traceroot.data.models import (
     LogEntry,
     MetricEntry,
 )
+from traceroot.data.validator import validate_incident_dataset
 from traceroot.domain.ground_truth import GroundTruth
 from traceroot.domain.incident import Incident
 
 
 def create_valid_dataset() -> tuple[IncidentDataset, GroundTruth]:
-    timestamp = datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 9, 20, 10, 0, tzinfo=UTC)
 
     incident = Incident(
         id="INC-TEST",
@@ -87,6 +86,7 @@ def test_valid_dataset_returns_no_errors():
     errors = validate_incident_dataset(dataset, ground_truth)
     assert errors == []
 
+
 def test_incident_id_mismatch_returns_error():
     dataset, ground_truth = create_valid_dataset()
     ground_truth.incident_id = "INC-OTHER"
@@ -97,7 +97,9 @@ def test_incident_id_mismatch_returns_error():
 
 def test_missing_supporting_evidence_returns_error():
     dataset, ground_truth = create_valid_dataset()
-    ground_truth.supporting_evidence_ids.append("LOG-TEST-02")  # Non-existent evidence ID
+    ground_truth.supporting_evidence_ids.append(
+        "LOG-TEST-02"
+    )  # Non-existent evidence ID
 
     errors = validate_incident_dataset(dataset, ground_truth)
     assert "Supporting evidence ID LOG-TEST-02 not found" in errors[0]
@@ -108,7 +110,7 @@ def test_duplicate_evidence_id_returns_error():
     # Add a duplicate log entry with the same ID
     duplicate_log = LogEntry(
         id="LOG-TEST-01",  # Same ID as existing log
-        timestamp=datetime(2026, 9, 20, 10, 5, tzinfo=timezone.utc),
+        timestamp=datetime(2026, 9, 20, 10, 5, tzinfo=UTC),
         service="test-service",
         level="ERROR",
         message="Another request timed out.",

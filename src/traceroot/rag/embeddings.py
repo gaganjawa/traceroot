@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-
 # Load environment variables once when this module is imported
 load_dotenv()
 

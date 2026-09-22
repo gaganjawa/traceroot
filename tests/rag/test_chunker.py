@@ -1,4 +1,5 @@
 import pytest
+
 from traceroot.rag.chunker import chunk_document
 from traceroot.rag.models import KnowledgeDocument
 
@@ -14,9 +15,7 @@ def create_document(content: str) -> KnowledgeDocument:
 
 
 def test_chunk_document_with_overlap():
-    document = create_document(
-        "one two three four five six seven"
-    )
+    document = create_document("one two three four five six seven")
 
     chunks = chunk_document(
         document,

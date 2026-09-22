@@ -19,16 +19,20 @@ def test_embed_texts_returns_empty_list_for_empty_input():
 
 def test_embed_texts_rejects_empty_text():
     with pytest.raises(ValueError):
-        embed_texts([
-            "valid text",
-            "",
-        ])
+        embed_texts(
+            [
+                "valid text",
+                "",
+            ]
+        )
 
 
 def test_embed_texts_rejects_whitespace_only_text():
     with pytest.raises(ValueError):
-        embed_texts([
-            "checkout latency",
-            "   ",
-            "payment failure",
-        ])
+        embed_texts(
+            [
+                "checkout latency",
+                "   ",
+                "payment failure",
+            ]
+        )

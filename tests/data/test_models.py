@@ -1,6 +1,11 @@
 from datetime import datetime
 
-from traceroot.data.models import LogEntry, MetricEntry, DeploymentEntry, CodeChangeEntry
+from traceroot.data.models import (
+    CodeChangeEntry,
+    DeploymentEntry,
+    LogEntry,
+    MetricEntry,
+)
 
 
 def test_create_log_entry():
@@ -9,7 +14,7 @@ def test_create_log_entry():
         timestamp=datetime(2023, 1, 1, 12, 0, 0),
         service="checkout-service",
         level="INFO",
-        message="User logged in successfully."
+        message="User logged in successfully.",
     )
 
     assert log_entry.id == "LOG-001"
@@ -72,5 +77,8 @@ def test_create_code_change_entry():
     assert code_change_entry.service == "checkout-service"
     assert code_change_entry.commit_sha == "a1b2c3d"
     assert code_change_entry.files == ["src/database.py", "config/application.yaml"]
-    assert code_change_entry.description == "Updated database connection pool configuration"
+    assert (
+        code_change_entry.description
+        == "Updated database connection pool configuration"
+    )
     assert code_change_entry.diff == "- maximumPoolSize: 100\n+ maximumPoolSize: 20"

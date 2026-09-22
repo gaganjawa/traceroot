@@ -2,6 +2,7 @@ from datetime import datetime
 
 from traceroot.domain.incident import Incident
 
+
 def test_incident_creation_with_suspected_services():
 
     incident = Incident(
@@ -15,6 +16,7 @@ def test_incident_creation_with_suspected_services():
     assert incident.id == "INC-001"
     assert incident.title == "Database Connection Pool Exhaustion"
     assert incident.suspected_services == ["checkout-service", "database-service"]
+
 
 def test_incident_creation_without_suspected_services():
     incident = Incident(

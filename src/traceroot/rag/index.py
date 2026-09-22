@@ -1,13 +1,10 @@
 from uuid import NAMESPACE_URL, uuid5
 
-from qdrant_client.models import PointStruct
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from traceroot.rag.embeddings import embed_text, embed_texts
 from traceroot.rag.models import KnowledgeChunk
-
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
-
 
 COLLECTION_NAME = "traceroot_knowledge"
 VECTOR_SIZE = 1536
@@ -24,9 +21,9 @@ def create_knowledge_collection(client: QdrantClient) -> None:
 
 
 def index_chunk(
-        client: QdrantClient,
-        chunk: KnowledgeChunk,
-    ) -> None:
+    client: QdrantClient,
+    chunk: KnowledgeChunk,
+) -> None:
     vector = embed_text(chunk.content)
     point_id = str(uuid5(NAMESPACE_URL, chunk.id))
 
@@ -56,9 +53,9 @@ def index_chunk(
 #              ↓
 # [vector1, vector2, vector3, vector4]
 def index_chunks(
-        client: QdrantClient,
-        chunks: list[KnowledgeChunk],
-    ) -> None:
+    client: QdrantClient,
+    chunks: list[KnowledgeChunk],
+) -> None:
 
     if not chunks:
         return

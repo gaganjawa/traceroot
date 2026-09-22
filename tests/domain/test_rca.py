@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+
 from traceroot.domain.rca import RCAResult
 
 
@@ -31,6 +32,7 @@ def test_create_rca_result_with_empty_evidence_ids():
     assert rca_result.root_cause == "API Gateway Latency Spike"
     assert rca_result.affected_service == "api-gateway-service"
     assert rca_result.evidence_ids == []
+
 
 def test_create_rca_result_without_confidence_and_affected_service():
     rca_result = RCAResult(

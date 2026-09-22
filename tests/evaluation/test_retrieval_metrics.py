@@ -29,13 +29,14 @@ def test_zero_recall():
     recall = recall_at_k(relevant_sources, retrieved_sources, k)
     assert recall == 0.0  # No relevant sources are found in the top k
 
+
 def test_duplicate_retrieved_source():
     relevant_sources = ["source1", "source2", "source3"]
     retrieved_sources = ["source2", "source2", "source6"]
     k = 3
 
     recall = recall_at_k(relevant_sources, retrieved_sources, k)
-    assert recall == 1/3  # The duplicate relevant source is counted only once
+    assert recall == 1 / 3  # The duplicate relevant source is counted only once
 
 
 def test_k_actually_matters():
@@ -44,7 +45,7 @@ def test_k_actually_matters():
     k = 2
 
     recall = recall_at_k(relevant_sources, retrieved_sources, k)
-    assert recall == 2/3  # All relevant sources are found in the top k
+    assert recall == 2 / 3  # All relevant sources are found in the top k
 
 
 def test_empty_relevant_sources():

@@ -1,5 +1,6 @@
 from traceroot.domain.ground_truth import GroundTruth
 
+
 def test_create_ground_truth_with_evidence_ids():
     ground_truth = GroundTruth(
         incident_id="INC-001",
@@ -13,6 +14,7 @@ def test_create_ground_truth_with_evidence_ids():
     assert ground_truth.root_cause_category == "Database"
     assert ground_truth.affected_service == "checkout-service"
     assert ground_truth.supporting_evidence_ids == ["EV-001", "EV-002"]
+
 
 def test_create_ground_truth_without_evidence_ids():
     ground_truth = GroundTruth(

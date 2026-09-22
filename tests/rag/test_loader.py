@@ -1,12 +1,13 @@
 from pathlib import Path
 
-from traceroot.rag.loader import load_knowledge_document, load_knowledge_corpus
+from traceroot.rag.loader import load_knowledge_document
 
 # ✓ valid Markdown → KnowledgeDocument
 # ✓ YAML front matter isn't included in content
 # ✓ missing front matter → ValueError
 # ✓ corpus loader loads multiple .md files
 # ✓ corpus ordering is deterministic
+
 
 def test_valid_knowledge_document(tmp_path: Path):
     content = """---
@@ -29,5 +30,3 @@ def test_valid_knowledge_document(tmp_path: Path):
     assert document.service == "checkout-service"
     assert document.topic == "latency"
     assert document.content.startswith("# Checkout Runbook")
-
-

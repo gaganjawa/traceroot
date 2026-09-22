@@ -21,9 +21,7 @@ def test_load_incident(tmp_path):
 
     incident_file = tmp_path / "incident.json"
 
-    incident_file.write_text(
-        json.dumps(incident_data)
-    )
+    incident_file.write_text(json.dumps(incident_data))
 
     loaded_incident = load_incident(incident_file)
 
@@ -94,8 +92,7 @@ def test_load_incident_dataset(tmp_path):
     # Write logs to a JSONL file
     logs_file = tmp_path / "logs.jsonl"
     with open(logs_file, "w") as f:
-        for log in logs:
-            f.write(json.dumps(log) + "\n")
+        f.writelines(json.dumps(log) + "\n" for log in logs)
 
     # Write metrics to a JSON file
     metrics_file = tmp_path / "metrics.json"

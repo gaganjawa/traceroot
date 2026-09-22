@@ -9,16 +9,12 @@ def load_knowledge_document(path: Path) -> KnowledgeDocument:
     content = path.read_text()
 
     if not content.startswith("---"):
-        raise ValueError(
-            "Knowledge document must contain YAML front matter"
-        )
+        raise ValueError("Knowledge document must contain YAML front matter")
 
     parts = content.split("---", 2)
 
     if len(parts) != 3:
-        raise ValueError(
-            "Knowledge document has invalid YAML front matter"
-        )
+        raise ValueError("Knowledge document has invalid YAML front matter")
 
     _, front_matter, body = parts
     metadata = yaml.safe_load(front_matter)

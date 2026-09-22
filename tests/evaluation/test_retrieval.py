@@ -4,7 +4,10 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from traceroot.evaluation.retrieval import RetrievalEvaluationCase, load_retrieval_evaluation_cases
+from traceroot.evaluation.retrieval import (
+    RetrievalEvaluationCase,
+    load_retrieval_evaluation_cases,
+)
 
 
 def test_retrieval_case_valid():
@@ -27,13 +30,13 @@ def test_retrieval_queries_load_multiple_cases(tmp_path):
         {
             "id": "RQ-001",
             "query": "What causes checkout latency?",
-            "relevant_sources": ["doc1.md", "doc2.md"]
+            "relevant_sources": ["doc1.md", "doc2.md"],
         },
         {
             "id": "RQ-002",
             "query": "How to fix payment failures?",
-            "relevant_sources": ["doc3.md"]
-        }
+            "relevant_sources": ["doc3.md"],
+        },
     ]
 
     file_path = tmp_path / "retrieval_queries.json"

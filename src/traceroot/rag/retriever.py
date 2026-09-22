@@ -1,16 +1,15 @@
 from qdrant_client import QdrantClient
 
-from traceroot.rag.index import COLLECTION_NAME
-
 from traceroot.rag.embeddings import embed_text
-from traceroot.rag.models import RetrievalResult, KnowledgeChunk
+from traceroot.rag.index import COLLECTION_NAME
+from traceroot.rag.models import KnowledgeChunk, RetrievalResult
 
 
 def retrieve(
-        client: QdrantClient,
-        query: str,
-        top_k: int = 5,
-    ) -> list[RetrievalResult]:
+    client: QdrantClient,
+    query: str,
+    top_k: int = 5,
+) -> list[RetrievalResult]:
 
     if not query.strip():
         raise ValueError("Query cannot be empty")

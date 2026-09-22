@@ -1,4 +1,9 @@
-from traceroot.evaluation.schemas import EvaluatorType, MetricResult, EvaluationResult, ExecutionMetrics
+from traceroot.evaluation.schemas import (
+    EvaluationResult,
+    EvaluatorType,
+    ExecutionMetrics,
+    MetricResult,
+)
 
 
 def test_create_metric_result():
