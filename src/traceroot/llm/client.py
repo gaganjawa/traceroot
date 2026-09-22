@@ -5,20 +5,24 @@ from openai import OpenAI
 
 load_dotenv()
 
-API_KEY = os.getenv("OPENAI_API_KEY")
-BASE_URL = os.getenv(
-    "OPENAI_BASE_URL",
-    "https://api.openai.com/v1",
-)
 LLM_MODEL = os.getenv(
     "OPENAI_LLM_MODEL",
     "gpt-5.4-mini",
 )
 
-if not API_KEY:
-    raise ValueError("OPENAI_API_KEY environment variable is not set.")
 
-llm_client = OpenAI(
-    api_key=API_KEY,
-    base_url=BASE_URL,
-)
+def get_llm_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY environment variable is not set.")
+
+    base_url = os.getenv(
+        "OPENAI_BASE_URL",
+        "https://api.openai.com/v1",
+    )
+
+    return OpenAI(
+        api_key=api_key,
+        base_url=base_url,
+    )

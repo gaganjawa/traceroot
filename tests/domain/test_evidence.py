@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from traceroot.domain.evidence import Evidence, EvidenceType
 
@@ -15,7 +15,7 @@ def test_create_log_evidence():
         source="checkout-service.log",
         content="Database connection acquisition timed out",
         service="checkout-service",
-        timestamp=datetime(2026, 9, 20, 14, 23),
+        timestamp=datetime(2026, 9, 20, 14, 23, tzinfo=UTC),
     )
 
     assert evidence.id == "EV-001"

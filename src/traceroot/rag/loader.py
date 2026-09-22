@@ -28,12 +28,13 @@ def load_knowledge_document(path: Path) -> KnowledgeDocument:
     )
 
 
-def load_knowledge_corpus(directory: Path) -> list[KnowledgeDocument]:
+def load_knowledge_corpus(
+    directory: Path,
+) -> list[KnowledgeDocument]:
     documents = []
+
     for path in sorted(directory.glob("*.md")):
-        try:
-            document = load_knowledge_document(path)
-            documents.append(document)
-        except Exception as e:
-            print(f"Error loading knowledge document {path}: {e}")
+        document = load_knowledge_document(path)
+        documents.append(document)
+
     return documents

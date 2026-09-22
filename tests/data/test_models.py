@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from traceroot.data.models import (
     CodeChangeEntry,
@@ -11,14 +11,14 @@ from traceroot.data.models import (
 def test_create_log_entry():
     log_entry = LogEntry(
         id="LOG-001",
-        timestamp=datetime(2023, 1, 1, 12, 0, 0),
+        timestamp=datetime(2023, 1, 1, 12, 0, 0, tzinfo=UTC),
         service="checkout-service",
         level="INFO",
         message="User logged in successfully.",
     )
 
     assert log_entry.id == "LOG-001"
-    assert log_entry.timestamp.isoformat() == "2023-01-01T12:00:00"
+    assert log_entry.timestamp.isoformat() == "2023-01-01T12:00:00+00:00"
     assert log_entry.service == "checkout-service"
     assert log_entry.level == "INFO"
     assert log_entry.message == "User logged in successfully."
@@ -27,7 +27,7 @@ def test_create_log_entry():
 def test_create_metric_entry():
     metric = MetricEntry(
         id="METRIC-001",
-        timestamp=datetime(2026, 9, 20, 12, 0, 0),
+        timestamp=datetime(2026, 9, 20, 12, 0, 0, tzinfo=UTC),
         service="checkout-service",
         metric="http_request_duration_p95",
         value=1840.0,
@@ -45,7 +45,7 @@ def test_create_metric_entry():
 def test_create_deployment_entry():
     deployment_entry = DeploymentEntry(
         id="DEPLOY-001",
-        timestamp=datetime(2026, 9, 20, 14, 20, 0),
+        timestamp=datetime(2026, 9, 20, 14, 20, 0, tzinfo=UTC),
         service="checkout-service",
         version="v2.4.1",
         description="Checkout service production deployment",
@@ -61,7 +61,7 @@ def test_create_deployment_entry():
 def test_create_code_change_entry():
     code_change_entry = CodeChangeEntry(
         id="CHANGE-001",
-        timestamp=datetime(2026, 9, 20, 13, 45, 0),
+        timestamp=datetime(2026, 9, 20, 13, 45, 0, tzinfo=UTC),
         service="checkout-service",
         commit_sha="a1b2c3d",
         files=[
