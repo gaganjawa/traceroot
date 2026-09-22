@@ -131,8 +131,8 @@ Completed:
 |---|---|---:|---|
 | TR-008 | Document Loading & Chunking | 1h | ✅ DONE |
 | TR-009 | Embeddings + Qdrant Indexing | 1.5h | ✅ DONE |
-| TR-010 | Semantic Retriever | 1.5h | 🟡 IN PROGRESS |
-| TR-011 | Retrieval Evaluation Dataset | 1h | ⬜ TODO |
+| TR-010 | Semantic Retriever | 1.5h | ✅ DONE |
+| TR-011 | Retrieval Evaluation Dataset | 1h | 🟡 IN PROGRESS |
 | TR-012 | Recall@K Evaluator | 1h | ⬜ TODO |
 | TR-013 | Vanilla RAG Baseline | 2h | ⬜ TODO |
 | TR-014 | Baseline Experiment Tracking | 1h | ⬜ TODO |
@@ -168,6 +168,20 @@ Completed:
 - End-to-end manual ingestion verified
 - 5 knowledge documents indexed successfully
 - 42 tests passing across project at ticket completion
+
+### TR-010 — Semantic Retriever
+
+Completed:
+- Natural-language query embedding
+- Qdrant cosine similarity retrieval
+- Configurable top-K
+- KnowledgeChunk reconstruction from Qdrant payload
+- Similarity score preservation
+- Query and top-K validation
+- In-memory Qdrant integration tests
+- OpenAI embedding mocked in unit tests
+- Real knowledge-corpus retrieval manually verified
+- 47 tests passing across project at ticket completion
 
 ---
 
@@ -248,13 +262,13 @@ MCP must not delay the core experiment.
 
 ## IN PROGRESS
 
-- TR-010 — Semantic Retriever
+- TR-011 — Retrieval Evaluation Dataset
 
 ## NEXT UP
 
-- TR-011 — Retrieval Evaluation Dataset
 - TR-012 — Recall@K Evaluator
 - TR-013 — Vanilla RAG Baseline
+- TR-014 — Baseline Experiment Tracking
 
 ## DONE
 
@@ -267,6 +281,7 @@ MCP must not delay the core experiment.
 - TR-007 — Engineering Knowledge Corpus
 - TR-008 — Document Loading & Chunking
 - TR-009 — Embeddings + Qdrant Indexing
+- TR-010 — Semantic Retriever
 
 ## STRETCH
 
@@ -292,25 +307,25 @@ MCP must not delay the core experiment.
 
 # Current Focus
 
-## TR-010 — Semantic Retriever
+## TR-011 — Retrieval Evaluation Dataset
 
-Retrieve the most semantically relevant knowledge chunks for a natural-language query.
+Create a fixed evaluation dataset for measuring whether the semantic retriever returns the knowledge documents relevant to a query.
 
 Flow:
 
-Natural-language query
-→ query embedding
-→ Qdrant cosine similarity search
-→ top-K points
-→ KnowledgeChunk + similarity score
+Evaluation query
+→ predefined relevant source(s)
+→ semantic retriever
+→ retrieved top-K sources
+→ TR-012 Recall@K evaluation
 
 Acceptance criteria:
 
-- Natural-language query can be embedded.
-- Qdrant performs cosine similarity search.
-- Configurable `top_k`.
-- Retrieved payload reconstructs the original KnowledgeChunk.
-- Similarity score is preserved.
-- Empty queries are rejected.
-- Retriever can operate against in-memory Qdrant in tests.
-- OpenAI embedding calls are mocked in unit tests.
+- Fixed retrieval-evaluation dataset exists.
+- Dataset contains queries covering the knowledge corpus.
+- Each query defines one or more expected relevant sources.
+- Expected sources are determined from document content, not current retriever output.
+- Pydantic model represents an evaluation case.
+- Loader parses the dataset into typed evaluation cases.
+- Invalid evaluation cases fail validation.
+- Dataset and loader are covered by tests.

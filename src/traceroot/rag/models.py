@@ -17,3 +17,8 @@ class KnowledgeChunk(BaseModel):
     service: str
     topic: str
     chunk_index: int
+
+
+class RetrievalResult(BaseModel):
+    chunk: KnowledgeChunk
+    score: float
