@@ -133,9 +133,9 @@ Completed:
 | TR-009 | Embeddings + Qdrant Indexing | 1.5h | ✅ DONE |
 | TR-010 | Semantic Retriever | 1.5h | ✅ DONE |
 | TR-011 | Retrieval Evaluation Dataset | 1h | ✅ DONE |
-| TR-012 | Recall@K Evaluator | 1h | 🟡 IN PROGRESS |
-| TR-013 | Vanilla RAG Baseline | 2h | ⬜ TODO |
-| TR-014 | Baseline Experiment Tracking | 1h | ⬜ TODO |
+| TR-012 | Recall@K Evaluator | 1h | ✅ DONE |
+| TR-013 | Vanilla RAG Baseline | 2h | ✅ DONE |
+| TR-014 | Baseline Experiment Tracking | 1h | 🟡 IN PROGRESS |
 
 ### TR-008 — Document Loading & Chunking
 
@@ -195,6 +195,44 @@ Completed:
 - Evaluation dataset loader
 - Loader and validation tests
 - 52 tests passing across project at ticket completion
+
+### TR-012 — Recall@K Evaluator
+
+Completed:
+- Deterministic Recall@K calculation
+- Configurable K
+- Unique-source matching
+- Duplicate retrieval protection
+- Full, partial and zero-recall tests
+- K-boundary behavior tests
+- Invalid K validation
+- Empty relevant-source validation
+- 60 tests passing across project at ticket completion
+
+### TR-013 — Vanilla RAG Baseline
+
+Completed:
+- Knowledge-only RCA baseline
+- Incident title + description retrieval query
+- Top-K semantic knowledge retrieval
+- Chunk and source provenance in LLM context
+- Structured `GeneratedRCA` output
+- Mapping to domain `RCAResult`
+- Shared lazy LLM client creation
+- Structured-output failure handling
+- No access to operational evidence
+- No access to hidden ground truth
+- Mocked OpenAI baseline tests
+- Baseline orchestration tests
+- Ruff formatting and linting introduced
+- 67 tests passing across project at ticket completion
+- Real INC-001 baseline run successfully verified
+
+Real INC-001 baseline behavior:
+- Identified checkout-service as the likely affected service
+- Correctly reported insufficient evidence to confirm root cause
+- Returned low confidence
+- Demonstrated the limitation of knowledge-only RAG without operational evidence
 
 ---
 
@@ -275,13 +313,13 @@ MCP must not delay the core experiment.
 
 ## IN PROGRESS
 
-- TR-012 — Recall@K Evaluator
+- TR-014 — Baseline Experiment Tracking
 
 ## NEXT UP
 
-- TR-013 — Vanilla RAG Baseline
-- TR-014 — Baseline Experiment Tracking
 - TR-015 — Logs Tool
+- TR-016 — Metrics Tool
+- TR-017 — Deployment Tool
 
 ## DONE
 
@@ -296,6 +334,8 @@ MCP must not delay the core experiment.
 - TR-009 — Embeddings + Qdrant Indexing
 - TR-010 — Semantic Retriever
 - TR-011 — Retrieval Evaluation Dataset
+- TR-012 — Recall@K Evaluator
+- TR-013 — Vanilla RAG Baseline
 
 ## STRETCH
 
@@ -321,19 +361,31 @@ MCP must not delay the core experiment.
 
 # Current Focus
 
-## TR-012 — Recall@K Evaluator
+## TR-014 — Baseline Experiment Tracking
 
-Measure whether expected relevant knowledge sources appear within the first K retrieved results.
+Persist enough information from each baseline run to make later RAG-vs-agent experiments reproducible.
 
-Formula:
+Track at minimum:
 
-Recall@K = number of unique relevant sources retrieved in top K / total number of unique relevant sources
+- Incident ID
+- Approach
+- Model
+- Retrieval top-K
+- Retrieved chunk IDs
+- Retrieved source documents
+- Retrieval similarity scores
+- Final `RCAResult`
+- Execution latency
+- Timestamp
+
+The experiment record must keep knowledge-retrieval provenance separate from operational `evidence_ids`.
 
 Acceptance criteria:
 
-- Computes Recall@K deterministically.
-- Supports configurable K.
-- Duplicate retrieved sources do not receive extra credit.
-- Rejects non-positive K.
-- Rejects empty relevant-source sets.
-- Unit tests cover full, partial, zero and duplicate-source recall.
+- Baseline runs produce a structured experiment record.
+- Retrieved chunk IDs, sources, and scores are persisted.
+- Final `RCAResult` is persisted.
+- Knowledge provenance remains separate from operational evidence IDs.
+- Experiment artifacts can be serialized to JSON.
+- Output is suitable for later comparative evaluation.
+- Tests do not require real OpenAI calls.

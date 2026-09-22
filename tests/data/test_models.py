@@ -52,7 +52,7 @@ def test_create_deployment_entry():
     )
 
     assert deployment_entry.id == "DEPLOY-001"
-    assert deployment_entry.timestamp.isoformat() == "2026-09-20T14:20:00"
+    assert deployment_entry.timestamp.isoformat() == "2026-09-20T14:20:00+00:00"
     assert deployment_entry.service == "checkout-service"
     assert deployment_entry.version == "v2.4.1"
     assert deployment_entry.description == "Checkout service production deployment"
@@ -73,7 +73,7 @@ def test_create_code_change_entry():
     )
 
     assert code_change_entry.id == "CHANGE-001"
-    assert code_change_entry.timestamp.isoformat() == "2026-09-20T13:45:00"
+    assert code_change_entry.timestamp.isoformat() == "2026-09-20T13:45:00+00:00"
     assert code_change_entry.service == "checkout-service"
     assert code_change_entry.commit_sha == "a1b2c3d"
     assert code_change_entry.files == ["src/database.py", "config/application.yaml"]
