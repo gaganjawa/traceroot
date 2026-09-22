@@ -15,8 +15,8 @@ Research Question:
 | Epic | Status |
 |---|---|
 | Epic 0 — Foundation | ✅ DONE |
-| Epic 1 — Synthetic Incident Environment | 🟡 IN PROGRESS |
-| Epic 2 — RAG Baseline | ⬜ TODO |
+| Epic 1 — Synthetic Incident Environment | ✅ DONE |
+| Epic 2 — RAG Baseline | 🟡 IN PROGRESS |
 | Epic 3 — Operational Evidence Tools | ⬜ TODO |
 | Epic 4 — Agentic Investigation | ⬜ TODO |
 | Epic 5 — Evaluation Framework | ⬜ TODO |
@@ -90,49 +90,38 @@ Completed:
 |---|---|---:|---|
 | TR-005 | Initial Incident Dataset | 2h | ✅ DONE |
 | TR-006 | Distractors & Dataset Validation | 1h | ✅ DONE |
-| TR-007 | Engineering Knowledge Corpus | 2h | 🟡 IN PROGRESS |
+| TR-007 | Engineering Knowledge Corpus | 2h | ✅ DONE |
 
-## TR-005 — Initial Incident Dataset
+### TR-005 — Initial Incident Dataset
 
 Completed:
-- 3 synthetic production incidents
+- 3 synthetic incidents
 - Different root-cause categories
-- Logs
-- Metrics
-- Deployments
-- Code changes
+- Logs, metrics, deployments and code changes
 - Hidden ground truth
 - Stable evidence IDs
-- Agent-visible data physically separated from evaluator ground truth
-- Incident descriptions contain symptoms rather than root-cause answers
+- Agent-visible data separated from evaluator ground truth
 
-Incidents:
-- INC-001 — checkout latency / configuration regression
-- INC-002 — payment authorization failures / code regression
-- INC-003 — order processing backlog / downstream dependency failure
-
-## TR-006 — Distractors & Dataset Validation
+### TR-006 — Distractors & Dataset Validation
 
 Completed:
 - Plausible non-causal evidence
 - Dataset consistency validator
-- Incident/ground-truth ID validation
-- Evidence ID uniqueness validation
-- Supporting evidence existence validation
+- Evidence ID validation
+- Supporting evidence validation
 - Required evidence-surface validation
-- Validator unit tests
 - 27 tests passing across project at ticket completion
 
-## TR-007 — Engineering Knowledge Corpus
+### TR-007 — Engineering Knowledge Corpus
 
-Status: **IN PROGRESS**
-
-Goals:
-- Create synthetic engineering documentation
-- Provide useful diagnostic knowledge without exposing incident answers
-- Cover architecture, runbooks, and engineering guidance
-- Add metadata suitable for retrieval
-- Prepare corpus for RAG ingestion
+Completed:
+- Architecture documentation
+- Checkout runbook
+- Payment runbook
+- Order-processing runbook
+- Incident-investigation guide
+- YAML metadata
+- No incident-specific ground-truth leakage
 
 ---
 
@@ -140,13 +129,45 @@ Goals:
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-008 | Document Loading & Chunking | 1h | ⬜ TODO |
-| TR-009 | Embeddings + Qdrant Indexing | 1.5h | ⬜ TODO |
-| TR-010 | Semantic Retriever | 1.5h | ⬜ TODO |
+| TR-008 | Document Loading & Chunking | 1h | ✅ DONE |
+| TR-009 | Embeddings + Qdrant Indexing | 1.5h | ✅ DONE |
+| TR-010 | Semantic Retriever | 1.5h | 🟡 IN PROGRESS |
 | TR-011 | Retrieval Evaluation Dataset | 1h | ⬜ TODO |
 | TR-012 | Recall@K Evaluator | 1h | ⬜ TODO |
 | TR-013 | Vanilla RAG Baseline | 2h | ⬜ TODO |
 | TR-014 | Baseline Experiment Tracking | 1h | ⬜ TODO |
+
+### TR-008 — Document Loading & Chunking
+
+Completed:
+- Markdown knowledge-document loading
+- YAML front-matter parsing
+- Required metadata validation
+- Deterministic corpus loading
+- Word-based overlapping chunking
+- Deterministic chunk IDs
+- Source metadata preservation
+- Chunking parameter validation
+- 33 tests passing across project at ticket completion
+
+### TR-009 — Embeddings + Qdrant Indexing
+
+Completed:
+- OpenAI embedding integration
+- `text-embedding-3-small`
+- 1536-dimensional vectors
+- Single and batch embedding
+- Qdrant collection creation
+- Cosine vector configuration
+- Deterministic UUID5 point IDs
+- KnowledgeChunk metadata stored as Qdrant payload
+- Batch chunk indexing
+- Repeatable upserts without duplicate accumulation
+- OpenAI mocked in unit tests
+- In-memory Qdrant used in unit tests
+- End-to-end manual ingestion verified
+- 5 knowledge documents indexed successfully
+- 42 tests passing across project at ticket completion
 
 ---
 
@@ -227,13 +248,13 @@ MCP must not delay the core experiment.
 
 ## IN PROGRESS
 
-- TR-007 — Engineering Knowledge Corpus
+- TR-010 — Semantic Retriever
 
 ## NEXT UP
 
-- TR-008 — Document Loading & Chunking
-- TR-009 — Embeddings + Qdrant Indexing
-- TR-010 — Semantic Retriever
+- TR-011 — Retrieval Evaluation Dataset
+- TR-012 — Recall@K Evaluator
+- TR-013 — Vanilla RAG Baseline
 
 ## DONE
 
@@ -243,6 +264,9 @@ MCP must not delay the core experiment.
 - TR-004 — Incident Data Contract
 - TR-005 — Initial Incident Dataset
 - TR-006 — Distractors & Dataset Validation
+- TR-007 — Engineering Knowledge Corpus
+- TR-008 — Document Loading & Chunking
+- TR-009 — Embeddings + Qdrant Indexing
 
 ## STRETCH
 
@@ -268,20 +292,25 @@ MCP must not delay the core experiment.
 
 # Current Focus
 
-## TR-007 — Engineering Knowledge Corpus
+## TR-010 — Semantic Retriever
 
-Create the synthetic engineering documentation used by both the RAG baseline and the agent.
+Retrieve the most semantically relevant knowledge chunks for a natural-language query.
 
-Initial corpus:
-- Architecture documentation
-- Checkout runbook
-- Payment runbook
-- Order-processing runbook
-- General incident investigation guidance
+Flow:
 
-Requirements:
-- Markdown documents
-- Useful diagnostic knowledge
-- No incident-specific ground truth
-- No direct answers to INC-001, INC-002, or INC-003
-- Suitable metadata for later retrieval
+Natural-language query
+→ query embedding
+→ Qdrant cosine similarity search
+→ top-K points
+→ KnowledgeChunk + similarity score
+
+Acceptance criteria:
+
+- Natural-language query can be embedded.
+- Qdrant performs cosine similarity search.
+- Configurable `top_k`.
+- Retrieved payload reconstructs the original KnowledgeChunk.
+- Similarity score is preserved.
+- Empty queries are rejected.
+- Retriever can operate against in-memory Qdrant in tests.
+- OpenAI embedding calls are mocked in unit tests.
