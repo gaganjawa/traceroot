@@ -254,7 +254,7 @@ Completed:
 |---|---|---:|---|
 | TR-015 | Logs Tool | 45m | ✅ DONE |
 | TR-016 | Metrics Tool | 45m | ✅ DONE |
-| TR-017 | Deployment Tool | 45m | ⬜ TODO |
+| TR-017 | Deployment Tool | 45m | ✅ DONE |
 | TR-018 | Git Changes Tool | 45m | ⬜ TODO |
 | TR-019 | Tool Interface + Tests | 1h | ⬜ TODO |
 
@@ -286,6 +286,19 @@ Completed:
 - Incident-scoped evidence access
 - Real INC-001 metric query manually verified
 - 95 tests passing across project at ticket completion
+
+### TR-017 — Deployment Tool
+
+Completed:
+- Deterministic incident deployment querying
+- Optional service filtering
+- Typed `DeploymentEntry` results
+- Stable deployment evidence IDs preserved
+- Original version, timestamp and description preserved
+- Existing incident dataset loader reused
+- Incident-scoped evidence access
+- Real INC-002 payment-service deployment query manually verified
+- 102 tests passing across project at ticket completion
 
 ---
 
@@ -354,11 +367,10 @@ MCP must not delay the core experiment.
 
 ## 🟡 In Progress
 
-- None — TR-016 checkpoint ready to commit
+- None — TR-017 checkpoint ready to commit
 
 ## ⬜ Next Up
 
-- TR-017 — Deployment Tool
 - TR-018 — Git Changes Tool
 - TR-019 — Tool Interface + Tests
 
@@ -380,6 +392,7 @@ MCP must not delay the core experiment.
 - TR-014 — Baseline Experiment Tracking
 - TR-015 — Logs Tool
 - TR-016 — Metrics Tool
+- TR-017 — Deployment Tool
 
 ## 🟣 Stretch
 
@@ -393,31 +406,31 @@ MCP must not delay the core experiment.
 1. Implement the simplest baseline before agent complexity.
 2. Ground truth must never be accessible to the application or agent.
 3. Synthetic ground truth must be fixed before evaluation.
-4. Operational evidence should remain deterministic.
-5. RAG and agent approaches must be evaluated on the same incidents.
+4. Operational evidence tools must be deterministic.
+5. RAG and agent approaches must use the same incidents.
 6. Never fabricate evaluation results.
 7. Evaluate retrieval independently from RCA generation.
 8. Evaluate agent behavior as well as final answers.
-9. Add complexity only when evaluation provides evidence that it is useful.
+9. Add complexity only when evaluation supports it.
 10. MCP is optional and must not delay the core evaluation.
 
 ---
 
 # Current Focus
 
-**TR-016 — Metrics Tool**
+**TR-017 — Deployment Tool**
 
 Goal:
 
-Complete and commit the deterministic metrics-query capability before starting TR-017.
+Complete and commit the deterministic deployment-query capability before starting TR-018.
 
 Current state:
 - implementation complete
 - tests complete
-- real INC-001 smoke test complete
-- 95 tests passing
+- real INC-002 smoke test complete
+- 102 tests passing
 - ready to commit/push
 
 Next after commit:
 
-**TR-017 — Deployment Tool**
+**TR-018 — Git Changes Tool**
