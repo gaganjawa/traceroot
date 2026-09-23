@@ -17,7 +17,7 @@ Research Question:
 | Epic 0 — Foundation | ✅ DONE |
 | Epic 1 — Synthetic Incident Environment | ✅ DONE |
 | Epic 2 — RAG Baseline | ✅ DONE |
-| Epic 3 — Operational Evidence Tools | 🟡 IN PROGRESS |
+| Epic 3 — Operational Evidence Tools | ✅ DONE |
 | Epic 4 — Agentic Investigation | ⬜ TODO |
 | Epic 5 — Evaluation Framework | ⬜ TODO |
 | Epic 6 — Comparative Experiments | ⬜ TODO |
@@ -256,7 +256,7 @@ Completed:
 | TR-016 | Metrics Tool | 45m | ✅ DONE |
 | TR-017 | Deployment Tool | 45m | ✅ DONE |
 | TR-018 | Git Changes Tool | 45m | ✅ DONE |
-| TR-019 | Tool Interface + Tests | 1h | ⬜ TODO |
+| TR-019 | Tool Interface + Tests | 1h | ✅ DONE |
 
 ### TR-015 — Logs Tool
 
@@ -314,6 +314,24 @@ Completed:
 - Incident-scoped evidence access
 - Real INC-002 payment-service code-change query manually verified
 - 109 tests passing across project at ticket completion
+
+### TR-019 — Tool Interface + Tests
+
+Completed:
+- Unified `ToolName` enum
+- Unified `execute_tool()` dispatcher
+- Logs dispatch
+- Metrics dispatch
+- Deployments dispatch
+- Code-changes dispatch
+- `incident_id` propagation
+- `service` propagation
+- Underlying typed results returned unchanged
+- Unknown tool rejection
+- No ground-truth access
+- No LLM involvement
+- Real INC-001 unified logs query manually verified
+- 117 tests passing across project at ticket completion
 
 ---
 
@@ -382,11 +400,13 @@ MCP must not delay the core experiment.
 
 ## 🟡 In Progress
 
-- None — TR-018 checkpoint ready to commit
+- None — TR-019 checkpoint ready to commit
 
 ## ⬜ Next Up
 
-- TR-019 — Tool Interface + Tests
+- TR-020 — LangGraph Investigation State
+- TR-021 — Hypothesis Generation
+- TR-022 — Tool Selection & Investigation Loop
 
 ## ✅ Done
 
@@ -408,6 +428,7 @@ MCP must not delay the core experiment.
 - TR-016 — Metrics Tool
 - TR-017 — Deployment Tool
 - TR-018 — Git Changes Tool
+- TR-019 — Tool Interface + Tests
 
 ## 🟣 Stretch
 
@@ -433,19 +454,19 @@ MCP must not delay the core experiment.
 
 # Current Focus
 
-**TR-018 — Git Changes Tool**
+**TR-019 — Tool Interface + Tests**
 
 Goal:
 
-Complete and commit deterministic code-change querying before starting TR-019.
+Complete and commit the unified operational-evidence tool gateway before starting the agentic investigation epic.
 
 Current state:
 - implementation complete
-- tests complete
-- real INC-002 smoke test complete
-- 109 tests passing
+- interface tests complete
+- real INC-001 interface smoke test complete
+- 117 tests passing
 - ready to commit/push
 
 Next after commit:
 
-**TR-019 — Tool Interface + Tests**
+**TR-020 — LangGraph Investigation State**
