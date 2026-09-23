@@ -39,8 +39,8 @@ Research Question:
 
 Completed:
 - Python 3.12 project
-- uv dependency management
-- src layout
+- `uv` dependency management
+- `src` layout
 - pytest
 - environment template
 - Git repository and GitHub remote
@@ -48,21 +48,21 @@ Completed:
 ### TR-002 — Core Domain Models
 
 Completed:
-- EvidenceType
-- Evidence
-- Incident
-- GroundTruth
-- RCAResult
+- `EvidenceType`
+- `Evidence`
+- `Incident`
+- `GroundTruth`
+- `RCAResult`
 - Pydantic validation
 - 12 tests passing at ticket completion
 
 ### TR-003 — Evaluation Contracts
 
 Completed:
-- EvaluatorType
-- MetricResult
-- ExecutionMetrics
-- EvaluationResult
+- `EvaluatorType`
+- `MetricResult`
+- `ExecutionMetrics`
+- `EvaluationResult`
 - Evaluation package under `src/traceroot/evaluation`
 - 17 tests passing at ticket completion
 
@@ -70,17 +70,17 @@ Completed:
 
 Completed:
 - Separate agent-visible incident data from hidden ground truth
-- LogEntry
-- MetricEntry
-- DeploymentEntry
-- CodeChangeEntry
-- IncidentDataset
+- `LogEntry`
+- `MetricEntry`
+- `DeploymentEntry`
+- `CodeChangeEntry`
+- `IncidentDataset`
 - `load_incident()`
 - `load_incident_dataset()`
 - JSONL log loading
 - JSON array loading for metrics/deployments/changes
 - Dataset loader tests
-- Ground truth excluded from IncidentDataset
+- Ground truth excluded from `IncidentDataset`
 
 ---
 
@@ -160,7 +160,7 @@ Completed:
 - Qdrant collection creation
 - Cosine vector configuration
 - Deterministic UUID5 point IDs
-- KnowledgeChunk metadata stored as Qdrant payload
+- `KnowledgeChunk` metadata stored as Qdrant payload
 - Batch chunk indexing
 - Repeatable upserts without duplicate accumulation
 - OpenAI mocked in unit tests
@@ -175,7 +175,7 @@ Completed:
 - Natural-language query embedding
 - Qdrant cosine similarity retrieval
 - Configurable top-K
-- KnowledgeChunk reconstruction from Qdrant payload
+- `KnowledgeChunk` reconstruction from Qdrant payload
 - Similarity score preservation
 - Query and top-K validation
 - In-memory Qdrant integration tests
@@ -190,7 +190,7 @@ Completed:
 - Coverage across all five knowledge documents
 - Varied natural-language query phrasing
 - Explicit relevant-source labels
-- Typed RetrievalEvaluationCase model
+- Typed `RetrievalEvaluationCase` model
 - Non-empty relevant-source validation
 - Evaluation dataset loader
 - Loader and validation tests
@@ -253,7 +253,7 @@ Completed:
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
 | TR-015 | Logs Tool | 45m | ✅ DONE |
-| TR-016 | Metrics Tool | 45m | 🟡 IN PROGRESS |
+| TR-016 | Metrics Tool | 45m | ✅ DONE |
 | TR-017 | Deployment Tool | 45m | ⬜ TODO |
 | TR-018 | Git Changes Tool | 45m | ⬜ TODO |
 | TR-019 | Tool Interface + Tests | 1h | ⬜ TODO |
@@ -271,6 +271,21 @@ Completed:
 - Existing incident dataset loader reused
 - Incident-scoped evidence access
 - Real INC-001 log query manually verified
+
+### TR-016 — Metrics Tool
+
+Completed:
+- Deterministic incident metric querying
+- Optional service filtering
+- Optional metric-name filtering
+- AND semantics for combined filters
+- Typed `MetricEntry` results
+- Stable evidence IDs preserved
+- Original metric values and units preserved
+- Existing incident dataset loader reused
+- Incident-scoped evidence access
+- Real INC-001 metric query manually verified
+- 95 tests passing across project at ticket completion
 
 ---
 
@@ -337,17 +352,17 @@ MCP must not delay the core experiment.
 
 # Kanban
 
-## IN PROGRESS
+## 🟡 In Progress
 
-- TR-016 — Metrics Tool
+- None — TR-016 checkpoint ready to commit
 
-## NEXT UP
+## ⬜ Next Up
 
 - TR-017 — Deployment Tool
 - TR-018 — Git Changes Tool
 - TR-019 — Tool Interface + Tests
 
-## DONE
+## ✅ Done
 
 - TR-001 — Project Setup
 - TR-002 — Core Domain Models
@@ -364,8 +379,9 @@ MCP must not delay the core experiment.
 - TR-013 — Vanilla RAG Baseline
 - TR-014 — Baseline Experiment Tracking
 - TR-015 — Logs Tool
+- TR-016 — Metrics Tool
 
-## STRETCH
+## 🟣 Stretch
 
 - TR-042 — MCP Evidence Server
 - TR-043 — LangGraph ↔ MCP Integration
@@ -376,29 +392,32 @@ MCP must not delay the core experiment.
 
 1. Implement the simplest baseline before agent complexity.
 2. Ground truth must never be accessible to the application or agent.
-3. Synthetic ground truth must be fixed before model evaluation.
-4. Operational evidence tools must be deterministic.
-5. RAG and agent approaches must use the same incidents.
+3. Synthetic ground truth must be fixed before evaluation.
+4. Operational evidence should remain deterministic.
+5. RAG and agent approaches must be evaluated on the same incidents.
 6. Never fabricate evaluation results.
 7. Evaluate retrieval independently from RCA generation.
 8. Evaluate agent behavior as well as final answers.
-9. Add complexity only when evaluation supports it.
+9. Add complexity only when evaluation provides evidence that it is useful.
 10. MCP is optional and must not delay the core evaluation.
 
 ---
 
 # Current Focus
 
-## TR-016 — Metrics Tool
+**TR-016 — Metrics Tool**
 
-Build deterministic querying of incident metrics.
+Goal:
 
-Proposed signature:
+Complete and commit the deterministic metrics-query capability before starting TR-017.
 
-```python
-def query_metrics(
-    incident_id: str,
-    service: str | None = None,
-    metric: str | None = None,
-) -> list[MetricEntry]:
-    ...
+Current state:
+- implementation complete
+- tests complete
+- real INC-001 smoke test complete
+- 95 tests passing
+- ready to commit/push
+
+Next after commit:
+
+**TR-017 — Deployment Tool**
