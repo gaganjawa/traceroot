@@ -255,7 +255,7 @@ Completed:
 | TR-015 | Logs Tool | 45m | ✅ DONE |
 | TR-016 | Metrics Tool | 45m | ✅ DONE |
 | TR-017 | Deployment Tool | 45m | ✅ DONE |
-| TR-018 | Git Changes Tool | 45m | ⬜ TODO |
+| TR-018 | Git Changes Tool | 45m | ✅ DONE |
 | TR-019 | Tool Interface + Tests | 1h | ⬜ TODO |
 
 ### TR-015 — Logs Tool
@@ -299,6 +299,21 @@ Completed:
 - Incident-scoped evidence access
 - Real INC-002 payment-service deployment query manually verified
 - 102 tests passing across project at ticket completion
+
+### TR-018 — Git Changes Tool
+
+Completed:
+- Deterministic incident code-change querying
+- Optional service filtering
+- Typed `CodeChangeEntry` results
+- Stable code-change evidence IDs preserved
+- Original commit SHA preserved
+- Original changed-file list preserved
+- Original description and diff preserved
+- Existing incident dataset loader reused
+- Incident-scoped evidence access
+- Real INC-002 payment-service code-change query manually verified
+- 109 tests passing across project at ticket completion
 
 ---
 
@@ -367,11 +382,10 @@ MCP must not delay the core experiment.
 
 ## 🟡 In Progress
 
-- None — TR-017 checkpoint ready to commit
+- None — TR-018 checkpoint ready to commit
 
 ## ⬜ Next Up
 
-- TR-018 — Git Changes Tool
 - TR-019 — Tool Interface + Tests
 
 ## ✅ Done
@@ -393,6 +407,7 @@ MCP must not delay the core experiment.
 - TR-015 — Logs Tool
 - TR-016 — Metrics Tool
 - TR-017 — Deployment Tool
+- TR-018 — Git Changes Tool
 
 ## 🟣 Stretch
 
@@ -418,19 +433,19 @@ MCP must not delay the core experiment.
 
 # Current Focus
 
-**TR-017 — Deployment Tool**
+**TR-018 — Git Changes Tool**
 
 Goal:
 
-Complete and commit the deterministic deployment-query capability before starting TR-018.
+Complete and commit deterministic code-change querying before starting TR-019.
 
 Current state:
 - implementation complete
 - tests complete
 - real INC-002 smoke test complete
-- 102 tests passing
+- 109 tests passing
 - ready to commit/push
 
 Next after commit:
 
-**TR-018 — Git Changes Tool**
+**TR-019 — Tool Interface + Tests**
