@@ -2,8 +2,9 @@ from pathlib import Path
 
 from qdrant_client import QdrantClient
 
-from traceroot.baseline.rag import generate_rag_rca
 from traceroot.data.loader import load_incident
+from traceroot.experiments.baseline import run_baseline_experiment
+from traceroot.experiments.persistence import save_baseline_record
 from traceroot.rag.chunker import chunk_document
 from traceroot.rag.index import create_knowledge_collection, index_chunks
 from traceroot.rag.loader import load_knowledge_corpus
@@ -30,13 +31,19 @@ def main():
     incident = load_incident(Path("data/incidents/INC-001/incident.json"))
 
     # 6. Run the real RAG baseline
-    result = generate_rag_rca(
+    record = run_baseline_experiment(
         qdrant_client=qdrant_client,
         incident=incident,
         top_k=5,
     )
 
-    print(result.model_dump_json(indent=2))
+    output_path = save_baseline_record(
+        record=record,
+        file_path="experiments/results/INC-001-rag_baseline.json",
+    )
+
+    print(record.model_dump_json(indent=2))
+    print(f"\nSaved experiment to: {output_path}")
 
 
 if __name__ == "__main__":

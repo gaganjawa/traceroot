@@ -8,6 +8,11 @@ from traceroot.rag.models import RetrievalResult
 from traceroot.rag.retriever import retrieve
 
 
+class RAGBaselineResult(BaseModel):
+    result: RCAResult
+    retrieval_results: list[RetrievalResult]
+
+
 class GeneratedRCA(BaseModel):
     root_cause: str
     affected_service: str | None = None
@@ -85,11 +90,11 @@ def build_context(
     return "\n\n".join(context_parts)
 
 
-def generate_rag_rca(
+def run_rag_baseline(
     qdrant_client: QdrantClient,
     incident: Incident,
     top_k: int = 5,
-) -> RCAResult:
+) -> RAGBaselineResult:
     """
     Generate a Root Cause Analysis (RCA) result for a given incident using Retrieval-Augmented Generation (RAG).
 
@@ -99,7 +104,7 @@ def generate_rag_rca(
         top_k (int): The number of top retrieved sources to consider.
 
     Returns:
-        RCAResult: The generated RCA result containing the incident, retrieved sources, and the generated RCA text.
+        RAGBaselineResult: The generated RCA result containing the incident, retrieved sources, and the generated RCA text.
     """
 
     query = f"{incident.title}\n{incident.description}"
@@ -112,7 +117,7 @@ def generate_rag_rca(
     # Generate RCA text using the retrieved sources and the incident description
     generated = generate_rca(incident, context)
 
-    return RCAResult(
+    rca_result = RCAResult(
         incident_id=incident.id,
         root_cause=generated.root_cause,
         affected_service=generated.affected_service,
@@ -120,3 +125,22 @@ def generate_rag_rca(
         explanation=generated.explanation,
         confidence=generated.confidence,
     )
+
+    return RAGBaselineResult(
+        result=rca_result,
+        retrieval_results=retrieval_results,
+    )
+
+
+def generate_rag_rca(
+    qdrant_client: QdrantClient,
+    incident: Incident,
+    top_k: int = 5,
+) -> RCAResult:
+    baseline_result = run_rag_baseline(
+        qdrant_client=qdrant_client,
+        incident=incident,
+        top_k=top_k,
+    )
+
+    return baseline_result.result
