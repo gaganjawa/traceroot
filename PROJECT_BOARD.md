@@ -16,8 +16,8 @@ Research Question:
 |---|---|
 | Epic 0 — Foundation | ✅ DONE |
 | Epic 1 — Synthetic Incident Environment | ✅ DONE |
-| Epic 2 — RAG Baseline | 🟡 IN PROGRESS |
-| Epic 3 — Operational Evidence Tools | ⬜ TODO |
+| Epic 2 — RAG Baseline | ✅ DONE |
+| Epic 3 — Operational Evidence Tools | 🟡 IN PROGRESS |
 | Epic 4 — Agentic Investigation | ⬜ TODO |
 | Epic 5 — Evaluation Framework | ⬜ TODO |
 | Epic 6 — Comparative Experiments | ⬜ TODO |
@@ -135,7 +135,7 @@ Completed:
 | TR-011 | Retrieval Evaluation Dataset | 1h | ✅ DONE |
 | TR-012 | Recall@K Evaluator | 1h | ✅ DONE |
 | TR-013 | Vanilla RAG Baseline | 2h | ✅ DONE |
-| TR-014 | Baseline Experiment Tracking | 1h | 🟡 IN PROGRESS |
+| TR-014 | Baseline Experiment Tracking | 1h | ✅ DONE |
 
 ### TR-008 — Document Loading & Chunking
 
@@ -218,7 +218,8 @@ Completed:
 - Chunk and source provenance in LLM context
 - Structured `GeneratedRCA` output
 - Mapping to domain `RCAResult`
-- Shared lazy LLM client creation
+- Retrieval provenance exposed without breaking the RCA API
+- Lazy LLM client creation
 - Structured-output failure handling
 - No access to operational evidence
 - No access to hidden ground truth
@@ -228,11 +229,22 @@ Completed:
 - 67 tests passing across project at ticket completion
 - Real INC-001 baseline run successfully verified
 
-Real INC-001 baseline behavior:
-- Identified checkout-service as the likely affected service
-- Correctly reported insufficient evidence to confirm root cause
-- Returned low confidence
-- Demonstrated the limitation of knowledge-only RAG without operational evidence
+### TR-014 — Baseline Experiment Tracking
+
+Completed:
+- Structured `BaselineExperimentRecord`
+- Separate `RetrievedKnowledge` provenance model
+- Model and top-K tracking
+- Retrieved chunk ID, source and similarity-score tracking
+- Final `RCAResult` persistence
+- Execution latency tracking
+- Timezone-aware experiment timestamp
+- JSON serialization
+- Filesystem persistence with parent-directory creation
+- Knowledge provenance kept separate from operational `evidence_ids`
+- Real INC-001 experiment artifact successfully generated
+- Real retrieval scores persisted
+- Real LLM result persisted
 
 ---
 
@@ -240,11 +252,25 @@ Real INC-001 baseline behavior:
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-015 | Logs Tool | 45m | ⬜ TODO |
-| TR-016 | Metrics Tool | 45m | ⬜ TODO |
+| TR-015 | Logs Tool | 45m | ✅ DONE |
+| TR-016 | Metrics Tool | 45m | 🟡 IN PROGRESS |
 | TR-017 | Deployment Tool | 45m | ⬜ TODO |
 | TR-018 | Git Changes Tool | 45m | ⬜ TODO |
 | TR-019 | Tool Interface + Tests | 1h | ⬜ TODO |
+
+### TR-015 — Logs Tool
+
+Completed:
+- Deterministic incident log querying
+- Optional service filtering
+- Optional log-level filtering
+- Optional message-content filtering
+- AND semantics for combined filters
+- Typed `LogEntry` results
+- Stable evidence IDs preserved
+- Existing incident dataset loader reused
+- Incident-scoped evidence access
+- Real INC-001 log query manually verified
 
 ---
 
@@ -313,13 +339,13 @@ MCP must not delay the core experiment.
 
 ## IN PROGRESS
 
-- TR-014 — Baseline Experiment Tracking
+- TR-016 — Metrics Tool
 
 ## NEXT UP
 
-- TR-015 — Logs Tool
-- TR-016 — Metrics Tool
 - TR-017 — Deployment Tool
+- TR-018 — Git Changes Tool
+- TR-019 — Tool Interface + Tests
 
 ## DONE
 
@@ -336,6 +362,8 @@ MCP must not delay the core experiment.
 - TR-011 — Retrieval Evaluation Dataset
 - TR-012 — Recall@K Evaluator
 - TR-013 — Vanilla RAG Baseline
+- TR-014 — Baseline Experiment Tracking
+- TR-015 — Logs Tool
 
 ## STRETCH
 
@@ -361,31 +389,16 @@ MCP must not delay the core experiment.
 
 # Current Focus
 
-## TR-014 — Baseline Experiment Tracking
+## TR-016 — Metrics Tool
 
-Persist enough information from each baseline run to make later RAG-vs-agent experiments reproducible.
+Build deterministic querying of incident metrics.
 
-Track at minimum:
+Proposed signature:
 
-- Incident ID
-- Approach
-- Model
-- Retrieval top-K
-- Retrieved chunk IDs
-- Retrieved source documents
-- Retrieval similarity scores
-- Final `RCAResult`
-- Execution latency
-- Timestamp
-
-The experiment record must keep knowledge-retrieval provenance separate from operational `evidence_ids`.
-
-Acceptance criteria:
-
-- Baseline runs produce a structured experiment record.
-- Retrieved chunk IDs, sources, and scores are persisted.
-- Final `RCAResult` is persisted.
-- Knowledge provenance remains separate from operational evidence IDs.
-- Experiment artifacts can be serialized to JSON.
-- Output is suitable for later comparative evaluation.
-- Tests do not require real OpenAI calls.
+```python
+def query_metrics(
+    incident_id: str,
+    service: str | None = None,
+    metric: str | None = None,
+) -> list[MetricEntry]:
+    ...
