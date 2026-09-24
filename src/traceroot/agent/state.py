@@ -20,6 +20,8 @@ class Hypothesis(BaseModel):
 class ToolCallRecord(BaseModel):
     tool_name: str
     evidence_ids: list[str] = Field(default_factory=list)
+    observations: list[str] = Field(default_factory=list)
+    reasoning: str | None = None
 
 
 class InvestigationState(BaseModel):

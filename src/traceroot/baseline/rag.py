@@ -3,7 +3,7 @@ from qdrant_client import QdrantClient
 
 from traceroot.domain.incident import Incident
 from traceroot.domain.rca import RCAResult
-from traceroot.llm.client import LLM_MODEL, get_llm_client
+from traceroot.llm.client import GPT_5_4_MINI_MODEL, get_llm_client
 from traceroot.rag.models import RetrievalResult
 from traceroot.rag.retriever import retrieve
 
@@ -53,7 +53,7 @@ def generate_rca(
     """
 
     response = get_llm_client().responses.parse(
-        model=LLM_MODEL,
+        model=GPT_5_4_MINI_MODEL,
         input=[
             {
                 "role": "system",

@@ -5,7 +5,7 @@ from traceroot.domain.incident import Incident
 from traceroot.domain.rca import RCAResult
 from traceroot.experiments.baseline import run_baseline_experiment
 from traceroot.experiments.models import BaselineExperimentRecord
-from traceroot.llm.client import LLM_MODEL
+from traceroot.llm.client import GPT_5_4_MINI_MODEL
 
 
 @patch("traceroot.experiments.baseline.run_rag_baseline")
@@ -42,7 +42,7 @@ def test_run_baseline_experiment_records_incident_metadata(mock_run_rag):
     assert isinstance(record, BaselineExperimentRecord)
     assert record.incident_id == "INC-123"
     assert record.approach == "rag_baseline"
-    assert record.model == LLM_MODEL
+    assert record.model == GPT_5_4_MINI_MODEL
     assert record.top_k == 5
 
 

@@ -5,7 +5,7 @@ from openai import OpenAI
 
 load_dotenv()
 
-LLM_MODEL = os.getenv(
+GPT_5_4_MINI_MODEL = os.getenv(
     "OPENAI_LLM_MODEL",
     "gpt-5.4-mini",
 )

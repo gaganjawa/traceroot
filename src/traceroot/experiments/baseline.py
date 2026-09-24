@@ -9,7 +9,7 @@ from traceroot.experiments.models import (
     BaselineExperimentRecord,
     RetrievedKnowledge,
 )
-from traceroot.llm.client import LLM_MODEL
+from traceroot.llm.client import GPT_5_4_MINI_MODEL
 
 
 def run_baseline_experiment(
@@ -38,7 +38,7 @@ def run_baseline_experiment(
 
     return BaselineExperimentRecord(
         incident_id=incident.id,
-        model=LLM_MODEL,
+        model=GPT_5_4_MINI_MODEL,
         top_k=top_k,
         retrieved_knowledge=retrieved_knowledge,
         result=baseline_result.result,
