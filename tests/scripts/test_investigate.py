@@ -94,12 +94,15 @@ def test_run_investigation_fails_for_missing_incident(tmp_path):
     incident_path = tmp_path / "missing.json"
     output_path = tmp_path / "result.json"
 
-    with patch(
-        "scripts.investigate.build_paths",
-        return_value=(incident_path, output_path),
-    ), pytest.raises(
-        FileNotFoundError,
-        match="Incident not found: INC-999",
+    with (
+        patch(
+            "scripts.investigate.build_paths",
+            return_value=(incident_path, output_path),
+        ),
+        pytest.raises(
+            FileNotFoundError,
+            match="Incident not found: INC-999",
+        ),
     ):
         run_investigation("INC-999", 6)
 
