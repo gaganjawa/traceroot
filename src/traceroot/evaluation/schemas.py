@@ -18,11 +18,14 @@ class MetricResult(BaseModel):
 
 
 class ExecutionMetrics(BaseModel):
-    latency_ms: float | None = None
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    tool_calls: int | None = None
-    investigation_steps: int | None = None
+    latency_ms: float | None = Field(default=None, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
+    llm_calls: int | None = Field(default=None, ge=0)
+    tool_calls: int | None = Field(default=None, ge=0)
+    investigation_steps: int | None = Field(default=None, ge=0)
+    estimated_cost_usd: float | None = Field(default=None, ge=0)
 
 
 class EvaluationResult(BaseModel):
