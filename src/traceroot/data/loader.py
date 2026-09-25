@@ -21,7 +21,6 @@ def load_incident(path: Path) -> Incident:
     Returns:
         Incident: The loaded incident.
     """
-    # Implementation for loading incident from JSON file
     with open(path, "r") as f:
         data = json.load(f)
     return Incident(**data)
