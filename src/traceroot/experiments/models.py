@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from traceroot.agent.state import Hypothesis, ToolCallRecord
 from traceroot.domain.rca import RCAResult
 
 
@@ -22,4 +23,18 @@ class BaselineExperimentRecord(BaseModel):
     result: RCAResult
 
     latency_ms: float = Field(ge=0)
+    timestamp: datetime
+
+
+class AgentExperimentRecord(BaseModel):
+    incident_id: str
+    approach: str = "agent"
+    model: str
+    hypotheses: list[Hypothesis]
+    evidence_ids: list[str]
+    tool_history: list[ToolCallRecord]
+    stop_reason: str | None = None
+    stop_reasoning: str | None = None
+    result: RCAResult
+    latency_ms: float
     timestamp: datetime

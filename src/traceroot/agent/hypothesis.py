@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 from traceroot.agent.state import Hypothesis
 from traceroot.domain.incident import Incident
-from traceroot.llm.client import GPT_5_4_MINI_MODEL, get_llm_client
+from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
 
 
 class GeneratedHypotheses(BaseModel):
@@ -43,7 +43,7 @@ def generate_hypothesis_from_llm(
     """
 
     response = get_llm_client().responses.parse(
-        model=GPT_5_4_MINI_MODEL,
+        model=LLM_MODEL_GPT_5_4_MINI,
         input=prompt,
         text_format=GeneratedHypotheses,
     )

@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 from traceroot.agent.state import InvestigationState
 from traceroot.domain.rca import RCAResult
-from traceroot.llm.client import GPT_5_4_MINI_MODEL, get_llm_client
+from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
 
 
 class GeneratedFinalRCA(BaseModel):
@@ -60,7 +60,7 @@ def generate_final_rca(
     client = get_llm_client()
 
     response = client.responses.parse(
-        model=GPT_5_4_MINI_MODEL,
+        model=LLM_MODEL_GPT_5_4_MINI,
         input=context,
         text_format=GeneratedFinalRCA,
     )

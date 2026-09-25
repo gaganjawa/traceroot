@@ -5,10 +5,15 @@ import pytest
 
 from traceroot.domain.rca import RCAResult
 from traceroot.experiments.models import (
+    AgentExperimentRecord,
     BaselineExperimentRecord,
     RetrievedKnowledge,
 )
-from traceroot.experiments.persistence import save_baseline_record
+from traceroot.experiments.persistence import (
+    save_agent_experiment_record,
+    save_baseline_record,
+)
+from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI
 
 
 @pytest.fixture
@@ -124,3 +129,84 @@ def test_save_baseline_record_returns_output_path(
 
     assert returned_path == file_path
     assert returned_path.exists()
+
+
+def test_save_agent_experiment_record_writes_json(
+    tmp_path,
+):
+    record = AgentExperimentRecord(
+        incident_id="INC-001",
+        model=LLM_MODEL_GPT_5_4_MINI,
+        hypotheses=[],
+        evidence_ids=["LOG-001-02"],
+        tool_history=[],
+        stop_reason="tool_budget_exhausted",
+        stop_reasoning="Maximum number of tool calls reached.",
+        result=RCAResult(
+            incident_id="INC-001",
+            root_cause="Database connection pool exhaustion.",
+            affected_service="checkout-service",
+            evidence_ids=["LOG-001-02"],
+            explanation="Connection acquisition timed out.",
+            confidence=0.9,
+        ),
+        latency_ms=100.0,
+        timestamp=datetime(
+            2026,
+            9,
+            25,
+            tzinfo=UTC,
+        ),
+    )
+
+    output_path = tmp_path / "agent.json"
+
+    result_path = save_agent_experiment_record(
+        record,
+        output_path,
+    )
+
+    assert result_path == output_path
+    assert output_path.exists()
+
+    content = output_path.read_text(encoding="utf-8")
+
+    assert '"incident_id": "INC-001"' in content
+    assert '"approach": "agent"' in content
+
+
+def test_save_agent_experiment_record_creates_parent_directory(
+    tmp_path,
+):
+    record = AgentExperimentRecord(
+        incident_id="INC-001",
+        model=LLM_MODEL_GPT_5_4_MINI,
+        hypotheses=[],
+        evidence_ids=["LOG-001-02"],
+        tool_history=[],
+        result=RCAResult(
+            incident_id="INC-001",
+            root_cause="Database connection pool exhaustion.",
+            affected_service="checkout-service",
+            evidence_ids=["LOG-001-02"],
+            explanation="Connection acquisition timed out.",
+            confidence=0.9,
+        ),
+        latency_ms=100.0,
+        timestamp=datetime(
+            2026,
+            9,
+            25,
+            tzinfo=UTC,
+        ),
+    )
+
+    output_path = tmp_path / "nested" / "results" / "agent.json"
+
+    save_agent_experiment_record(
+        record,
+        output_path,
+    )
+
+    assert output_path.exists()
+    assert output_path.parent.exists()

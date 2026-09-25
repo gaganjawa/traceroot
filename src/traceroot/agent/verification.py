@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 from traceroot.agent.state import Hypothesis, HypothesisStatus, InvestigationState
-from traceroot.llm.client import GPT_5_4_MINI_MODEL, get_llm_client
+from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
 
 
 class HypothesisAssessment(BaseModel):
@@ -53,7 +53,7 @@ def verify_hypotheses(
     )
 
     response = get_llm_client().responses.parse(
-        model=GPT_5_4_MINI_MODEL,
+        model=LLM_MODEL_GPT_5_4_MINI,
         input=prompt,
         text_format=HypothesisAssessments,
     )
