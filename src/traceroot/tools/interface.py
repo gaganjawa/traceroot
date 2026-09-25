@@ -18,6 +18,8 @@ def execute_tool(
     incident_id: str,
     service: str | None = None,
 ) -> list:
+    if tool_name is None:
+        raise ValueError(f"Unknown tool name: {tool_name}")
     if tool_name == ToolName.LOGS:
         return query_logs(incident_id=incident_id, service=service)
     elif tool_name == ToolName.METRICS:

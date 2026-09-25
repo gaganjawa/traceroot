@@ -286,21 +286,40 @@ def test_investigate_respects_max_tool_calls(
     mock_execute_tool,
 ):
     mock_client = MagicMock()
-    mock_client.responses.parse.return_value = create_mock_llm_response(
-        ToolName.LOGS,
-        "checkout-service",
-    )
+
+    mock_client.responses.parse.side_effect = [
+        create_mock_llm_response(
+            ToolName.LOGS,
+            "checkout-service",
+        ),
+        create_mock_llm_response(
+            ToolName.METRICS,
+            "checkout-service",
+        ),
+        create_mock_llm_response(
+            ToolName.DEPLOYMENTS,
+            "checkout-service",
+        ),
+    ]
+
     mock_get_llm_client.return_value = mock_client
 
-    mock_execute_tool.return_value = []
+    mock_execute_tool.side_effect = [
+        [MagicMock(id="LOG-001")],
+        [MagicMock(id="METRIC-001")],
+        [MagicMock(id="DEPLOY-001")],
+    ]
 
-    investigate(
+    result = investigate(
         state=create_test_state(),
         max_tool_calls=3,
     )
 
     assert mock_client.responses.parse.call_count == 3
     assert mock_execute_tool.call_count == 3
+
+    assert len(result.tool_history) == 3
+    assert result.stop_reason == "tool_budget_exhausted"
 
 
 @patch("traceroot.agent.investigation.execute_tool")

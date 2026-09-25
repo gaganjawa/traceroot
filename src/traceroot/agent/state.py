@@ -19,6 +19,7 @@ class Hypothesis(BaseModel):
 
 class ToolCallRecord(BaseModel):
     tool_name: str
+    service: str | None = None
     evidence_ids: list[str] = Field(default_factory=list)
     observations: list[str] = Field(default_factory=list)
     reasoning: str | None = None
@@ -30,3 +31,5 @@ class InvestigationState(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
     tool_history: list[ToolCallRecord] = Field(default_factory=list)
     final_result: RCAResult | None = None
+    stop_reason: str | None = None
+    stop_reasoning: str | None = None
