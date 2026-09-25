@@ -19,11 +19,11 @@ Research Question:
 | Epic 2 — RAG Baseline | ✅ DONE |
 | Epic 3 — Operational Evidence Tools | ✅ DONE |
 | Epic 4 — Agentic Investigation | ✅ DONE |
-| Epic 5 — Evaluation Framework | ⬜ TODO |
+| Epic 5 — Evaluation Framework | 🟡 IN PROGRESS |
 | Epic 6 — Comparative Experiments | ⬜ TODO |
 | Epic 7 — Delivery | 🟡 IN PROGRESS |
 | Epic 8 — MCP Integration | 🟣 STRETCH |
-| Epic 9 — Extended Scope / Productionization | 🔵 EXTENDED |
+| Epic 9 — Extended Production Scope | 🔵 EXTENDED |
 
 ---
 
@@ -451,12 +451,11 @@ deployments / checkout-service
         ↓
 code_changes / checkout-service
 ```
-
 Smoke-test termination:
-
 ```text
 tool_budget_exhausted
 ```
+
 
 ### TR-025 — Evidence-Grounded RCA Generation
 
@@ -488,7 +487,7 @@ Completed:
 - Implementation committed
 
 Recorded validation at ticket completion:
-- 186 tests passing
+- 186 tests passing, as reported in the project handoff; not rerun for this documentation update
 - Real INC-001 smoke run saved `experiments/results/INC-001-agent.json`
 - The smoke run stopped with `duplicate_selection` after three tool calls
 - That run did not reach deployment/code-change evidence, leaving a broader RCA for later trace evaluation and failure analysis
@@ -499,59 +498,32 @@ These checks demonstrate execution and persistence behavior. They do not establi
 
 Completed:
 - Added `scripts/investigate.py`
-- CLI entry point for running a complete TraceRoot investigation
-- Required `--incident-id` argument
+- CLI entry point for a complete TraceRoot investigation
+- Required `--incident-id`
 - Configurable `--max-tool-calls`
-- Deterministic incident and output path construction
-- Existing `load_incident()` reused
-- Existing `run_agent_experiment()` reused
-- Human-readable hypothesis output
-- Human-readable investigation trace
-- Stop reason and stop reasoning displayed
-- Final RCA, affected service, explanation, confidence, and cited evidence displayed
-- Persisted trace path displayed
-- Missing incident handled with a clear CLI error
-- CLI unit tests added
-- Full project validation completed with **194 tests passing**
+- Existing incident loader and agent experiment runner reused
+- Human-readable hypotheses and tool trace
+- Stop reason/reasoning output
+- Final RCA, explanation, confidence, and evidence citations
+- Persisted trace path
+- Missing incident handled cleanly
+- CLI tests
+- Full validation: **194 tests passing**
 
 Smoke test:
-
-```bash
-uv run python scripts/investigate.py \
-  --incident-id INC-001 \
-  --max-tool-calls 4
-```
-
-Observed investigation:
-
-```text
-metrics / checkout-service
-        ↓
-logs / checkout-service
-        ↓
-logs / payment-service
-        ↓
-metrics / database-service
-        ↓
-no metric evidence returned
-```
-
-Termination:
-
-```text
-tool_budget_exhausted
-```
-
-The final RCA identified database connection contention/saturation in `checkout-service` as the likely cause and cited gathered log/metric evidence.
+- Incident: `INC-001`
+- Tool budget: `4`
+- metrics / checkout-service
+- logs / checkout-service
+- logs / payment-service
+- metrics / database-service
+- Terminated with `tool_budget_exhausted`
+- Final RCA identified checkout-service database connection contention/saturation
+- The limited tool budget did not reach deployment/code-change evidence
 
 Evaluation note:
-- With a four-tool budget, this run did not reach deployment or code-change evidence
-- It therefore identified the operational bottleneck but not the exact configuration regression
-- This is a useful scenario for later agent trace, efficiency, and failure analysis
-
-Architectural boundary:
-- The current CLI uses frozen incident fixtures for reproducible evaluation
-- Production incident intake and live observability integrations are explicitly deferred to Extended Scope
+- The result identified the affected root-cause area but did not identify the exact `100 → 20` connection-pool configuration regression
+- This is a useful case for later failure analysis and trace evaluation
 
 ---
 
@@ -559,14 +531,170 @@ Architectural boundary:
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-027 | DeepEval Setup | 1h | ⬜ TODO |
-| TR-028 | Root-Cause Accuracy Evaluator | 1h | ⬜ TODO |
-| TR-029 | Evidence Precision & Recall | 1h | ⬜ TODO |
-| TR-030 | DeepEval Faithfulness | 1h | ⬜ TODO |
-| TR-031 | DeepEval Relevancy | 1h | ⬜ TODO |
+| TR-027 | DeepEval Setup | 1h | ✅ DONE |
+| TR-028 | Root-Cause Accuracy Evaluator | 1h | ✅ DONE |
+| TR-029 | Evidence Precision & Recall | 1h | ✅ DONE |
+| TR-030 | DeepEval Faithfulness | 1h | ✅ DONE |
+| TR-031 | DeepEval Relevancy | 1h | ✅ DONE |
 | TR-032 | Agent Trace Evaluator | 1.5h | ⬜ TODO |
-| TR-033 | Efficiency Instrumentation | 1h | ⬜ TODO |
+| TR-033 | Efficiency, Cost & Latency Instrumentation | 1.5h | ⬜ TODO |
 | TR-034 | Unified Evaluation Runner | 2h | ⬜ TODO |
+
+### TR-027 — DeepEval Setup
+
+Completed:
+- Added DeepEval dependency
+- Added reusable `LLMTestCase` construction helper
+- Input, actual output, and optional expected output mapped correctly
+- Unit tests added
+- DeepEval kept out of production runtime paths
+- Real `AnswerRelevancyMetric` smoke test executed successfully
+
+Smoke test:
+
+```text
+Score: 1.0
+```
+
+### TR-028 — Root-Cause Accuracy Evaluator
+
+Completed:
+- Semantic root-cause correctness evaluation
+- Uses evaluator-only `GroundTruth`
+- DeepEval `GEval`
+- Compares generated root cause against expected root cause semantically
+- Uses public DeepEval `.measure()` API
+- Returns TraceRoot `MetricResult` with score, pass/fail, and reason
+- Full project validation: **203 tests passing**
+
+Smoke test:
+
+```text
+Score: 1.0
+Passed: True
+```
+
+Important:
+- This validates the evaluator behavior, not overall TraceRoot accuracy
+
+### TR-029 — Evidence Precision & Recall
+
+Completed:
+- Deterministic operational-evidence precision and recall
+- Uses generated `RCAResult.evidence_ids` and evaluator-only `GroundTruth.supporting_evidence_ids`
+- Set semantics remove duplicate IDs
+- Empty predictions/relevant sets handled
+- No LLM required
+- Full project validation: **209 tests passing**
+
+Smoke test:
+
+```text
+Precision: 1.0
+Recall: 1.0
+```
+
+Important:
+- Smoke used a manually complete INC-001 evidence set
+- It validates the metric, not agent performance
+- Supporting-evidence lists must be audited and frozen before final reporting
+
+### TR-030 — DeepEval Faithfulness
+
+Completed:
+- Added DeepEval `FaithfulnessMetric`
+- Evaluates whether RCA claims are supported by the context actually available to the approach
+- No hidden ground truth used
+- RAG context = retrieved knowledge
+- Agent context = gathered operational evidence
+- Uses `gpt-5.4-mini` evaluator
+- Score, pass/fail, and reason mapped to `MetricResult`
+- Unit tests use the existing `@patch(...)` annotation style
+- Full project validation: **214 tests passing**
+
+Smoke test:
+
+```text
+Score: 1.0
+Passed: True
+Reason: The actual output aligned with the supplied retrieval context with no contradiction.
+```
+
+### TR-031 — DeepEval Relevancy
+
+Completed:
+- Added DeepEval `AnswerRelevancyMetric`
+- Evaluates whether the generated RCA directly addresses the incident question
+- No ground truth or retrieval context required
+- Uses `gpt-5.4-mini` evaluator
+- Score, pass/fail, and reason mapped to `MetricResult`
+- Unit tests use the existing `@patch(...)` annotation style
+- Full project validation: **218 tests passing**
+
+Smoke test:
+
+```text
+Score: 1.0
+Passed: True
+Reason: The response directly addressed the checkout incident question with no irrelevant statements.
+```
+
+### TR-032 — Agent Trace Evaluator
+
+Goal:
+- Evaluate investigation behavior independently from final RCA quality
+
+Candidate deterministic metrics:
+- number of tool calls
+- unique tool/service selections
+- duplicate-selection attempts
+- empty-result calls
+- tool-budget exhaustion / explicit stopping
+- evidence gathered per call
+- useful evidence progression
+- evaluator-only supporting-evidence coverage
+- stop reason and potential premature stopping
+
+Known cases:
+- Earlier INC-001 run stopped on duplicate selection
+- TR-026A INC-001 run exhausted four-tool budget before deployment/code-change evidence
+
+### TR-033 — Efficiency, Cost & Latency Instrumentation
+
+Goal:
+- Explicitly satisfy capstone evaluation requirements for cost and latency
+
+Measure:
+- end-to-end wall-clock latency
+- LLM call count
+- operational tool-call count
+- input/output/total tokens where exposed
+- estimated model cost
+
+Requirements:
+- Record model name and documented pricing assumptions
+- Do not fabricate unavailable token counts or costs
+
+### TR-034 — Unified Evaluation Runner
+
+Goal:
+- Run RAG and Agent through one reproducible evaluation workflow on the same frozen dataset
+
+Evaluate:
+- RCA Accuracy
+- Faithfulness
+- Relevancy
+- Evidence Precision / Recall
+- Agent Trace Metrics
+- Cost / Latency
+
+Requirements:
+- Ground truth stays evaluator-only
+- Persist raw outputs before scoring
+- Preserve per-incident metrics and evaluator reasons
+- Preserve experiment configuration
+- Record failures instead of dropping them
+- Aggregate only after individual results are retained
 
 ---
 
@@ -576,7 +704,7 @@ Architectural boundary:
 |---|---|---:|---|
 | TR-035 | Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios | 3h | ⬜ TODO |
 | TR-036 | Run RAG vs Agent Evaluation | 1h | ⬜ TODO |
-| TR-037 | Failure Analysis | 1h | ⬜ TODO |
+| TR-037 | Failure & Error Analysis | 1h | ⬜ TODO |
 | TR-038 | Evidence-Driven Improvement | 1.5h | ⬜ TODO |
 | TR-039 | Re-evaluate & Compare | 1h | ⬜ TODO |
 
@@ -621,6 +749,59 @@ Acceptance criteria:
 - The exact same frozen incident set used for both approaches
 - Incident-field parity, including `suspected_services`, resolved or explicitly controlled before TR-036
 - Final dataset reviewed and frozen before comparative results are reported
+- Ground-truth relevant evidence sets audited before evidence precision/recall reporting
+- No real company/customer data or PII included
+
+### TR-036 — Run RAG vs Agent Evaluation
+
+Goal:
+- Run the mandatory RAG-vs-Agent comparative experiment on the same frozen incidents
+
+Report per incident:
+- RCA accuracy
+- faithfulness
+- relevancy
+- evidence precision/recall where applicable
+- trace quality
+- latency
+- LLM/tool calls
+- token usage where available
+- estimated cost
+
+Requirements:
+- comparable inputs and documented model configuration
+- no manual correction of outputs
+- raw outputs persisted before scoring
+- failed runs preserved
+- measured results only
+
+### TR-037 — Failure & Error Analysis
+
+Analyze:
+- incorrect/partial/broad-but-incomplete RCA
+- unsupported RCA
+- retrieval/evidence failures
+- premature stop / duplicate selection / empty tools / budget exhaustion
+- missing telemetry / distractor sensitivity
+- malformed LLM output / evaluator-runtime failure
+- cost and latency outliers
+
+Classify where possible as model reasoning, retrieval, tool/evidence, insufficient data, guardrail, or evaluator/runtime failure.
+
+### TR-038 — Evidence-Driven Improvement
+
+Goal:
+- Make only improvements justified by measured failure modes
+- Keep the frozen evaluation dataset unchanged
+- Avoid architecture changes without evidence
+
+### TR-039 — Re-evaluate & Compare
+
+Goal:
+- Re-run the improved system against the same frozen dataset
+- Preserve before/after results
+- Report regressions as well as improvements
+- Never fabricate improvement
 
 ---
 
@@ -628,23 +809,75 @@ Acceptance criteria:
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-040 | README + Architecture + Results | 2h | 🟡 IN PROGRESS |
-| TR-041 | 3-Minute Demo | 1h | ⬜ TODO |
+| TR-040 | README + Architecture + Capstone Report + Results | 2.5h | 🟡 IN PROGRESS |
+| TR-041 | Demo Video / Public Demo | 1h | ⬜ TODO |
 
-### TR-040 — README + Architecture + Results
+### TR-040 — README + Architecture + Capstone Report + Results
 
-Drafted for review:
-- [Starter README](README.md) reflecting the implementation through TR-026A
-- [Architecture guide](docs/ARCHITECTURE.md) with simplified architecture, Mermaid flow diagrams, and a three-minute demo explanation
-- Setup/run examples, current limitations, and experimental boundaries
-- CLI investigation entry point documented
+Current deliverables:
+- [README](README.md)
+- [Architecture guide](docs/ARCHITECTURE.md)
+- `docs/CAPSTONE_REPORT.md` — pending
+
+`docs/ARCHITECTURE.md` must explicitly document:
+- high-level, RAG, and agent architecture
+- investigation state and deterministic tool layer
+- evidence grounding and ground-truth isolation
+- persistence and evaluation architecture
+- architecture trade-offs
+- synchronous loop decision
+- chunking strategy, chunk size/overlap, and rationale
+- embedding/Qdrant choices
+- operational tool choices and guardrails
+- file-backed evaluation surface vs future production adapters
+
+`docs/CAPSTONE_REPORT.md` must map directly to the official rubric:
+
+1. **Problem Definition** — scoping, clarity, research question, success criteria, limitations
+2. **Data Processing** — sources, normalization, evidence IDs, PII handling, guardrails, provenance, ground-truth isolation
+3. **System Design** — architecture, flows, tools, chunking, persistence, trade-offs
+4. **Evals** — task-specific metrics, error/failure handling, cost, latency, final RAG-vs-Agent results
 
 Remaining:
-- Review the documentation drafts
-- Add measured comparative results and failure analysis after evaluation
-- Refresh the final documentation with the evaluated configuration and frozen dataset
+- Create `CAPSTONE_REPORT.md`
+- Finalize architecture against the rubric
+- Add measured comparative results and failure/error analysis
+- Document frozen dataset/provenance and cost/latency results
+- Final consistency pass across README, architecture, and report
 
-Keep TR-040 in progress until results are available and the delivery documentation is finalized. The demo outline does not complete TR-041.
+Keep TR-040 in progress until real evaluation results are included.
+
+### TR-041 — Demo Video / Public Demo
+
+Submission requires:
+- public project code URL
+- either a hosted application or a demo video
+
+Preferred path:
+
+```text
+Public GitHub Repository
+        +
+3–5 Minute Demo Video
+```
+
+Demo should show:
+1. problem and research question
+2. architecture
+3. RAG baseline
+4. agent investigation
+5. hypotheses/tool calls/evidence
+6. final RCA
+7. comparative evaluation results
+8. one meaningful failure-analysis insight
+9. quality vs cost/latency trade-off
+
+Final submission checklist:
+- code URL
+- demo URL
+- system design document URL
+- problem definition / data processing / evaluation criteria document URL
+- optional additional context
 
 ---
 
@@ -661,115 +894,102 @@ MCP must not delay the core experiment.
 
 # Epic 9 — Extended Scope / Productionization
 
-These items are intentionally outside the core capstone evaluation scope and must not delay TR-027 through TR-041.
-
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-044 | Live Incident Intake | TBD | 🔵 EXTENDED |
-| TR-045 | Live Evidence Integrations | TBD | 🔵 EXTENDED |
-| TR-046 | Simple Investigation UI | TBD | 🔵 EXTENDED |
+| TR-044 | Live Incident Intake | 1.5h | 🔵 EXTENDED |
+| TR-045 | Live Evidence Integrations | 4h+ | 🔵 EXTENDED |
+| TR-046 | Simple Investigation UI | 2h | 🔵 EXTENDED |
+
+This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
 
 ### TR-044 — Live Incident Intake
 
 Goal:
 
-Allow TraceRoot investigations to begin from newly received incident information rather than requiring a pre-created evaluation incident directory.
+Allow TraceRoot to start an investigation from newly received incident information instead of requiring a pre-created incident fixture.
 
-Potential inputs:
+Potential intake channels:
 - CLI
 - REST API
+- Manual UI form
 - PagerDuty / Opsgenie
 - Slack / Teams
-- Manual UI form
 
-Initial incident information:
+Minimum incident input:
 - title
 - description
-- start time
-- suspected or affected services
+- incident start time
+- suspected or affected services when known
 
-Conceptual flow:
+Target flow:
 
 ```text
-Incident Alert / Engineer
-          ↓
-     Incident Intake
-          ↓
-        Incident
-          ↓
-TraceRoot Investigation
+Alert / Engineer / Incident Platform
+              ↓
+        Incident Intake
+              ↓
+        TraceRoot Incident
+              ↓
+     Agentic Investigation
 ```
 
-This separates production incident intake from the frozen evaluation fixtures.
+The runtime-generated incident should use the same `Incident` domain contract as evaluation incidents.
 
 ### TR-045 — Live Evidence Integrations
 
 Goal:
 
-Replace file-backed operational evidence adapters with production-system integrations while preserving the same investigation workflow.
+Replace or complement the current file-backed evidence providers with adapters to live operational systems while preserving the existing agent/tool contracts.
 
 Potential integrations:
+- Logs → Splunk / CloudWatch / Elasticsearch
+- Metrics → Prometheus / Datadog / Grafana-compatible sources
+- Traces → OpenTelemetry
+- Deployments → Kubernetes / Argo CD / CI/CD systems
+- Code changes → GitHub / GitLab
+
+Architecture principle:
 
 ```text
-Logs
-→ Splunk / CloudWatch / Elasticsearch
+Evaluation Mode
+Frozen JSON evidence
+        ↓
+Existing TraceRoot tools
 
-Metrics
-→ Prometheus / Datadog / Grafana
-
-Deployments
-→ Kubernetes / ArgoCD / CI/CD
-
-Code Changes
-→ GitHub / GitLab
-
-Traces
-→ OpenTelemetry
+Production Mode
+Live observability / deployment / Git APIs
+        ↓
+Evidence adapters
+        ↓
+Same TraceRoot investigation workflow
 ```
 
-The agent investigation logic should remain largely unchanged. The evidence adapters behind the tool interface change.
-
-Production flow:
-
-```text
-Live Incident
-     ↓
-TraceRoot Agent
-     ↓
-Operational Tool Interface
-     ↓
-Logs / Metrics / Deployments / Git / Traces
-     ↓
-Evidence-Grounded RCA
-```
+The investigation agent should not need to know whether evidence comes from frozen fixtures or live adapters.
 
 ### TR-046 — Simple Investigation UI
 
 Goal:
 
-Provide a lightweight human-facing investigation interface.
+Provide a lightweight interface for starting and observing an investigation.
 
-Initial UI capabilities:
-- Start a new incident investigation
-- Select an existing evaluation incident
-- View generated hypotheses
-- View tool calls
-- View gathered evidence
-- View hypothesis status
-- View investigation stop reason
-- View final RCA
-- View confidence
-- View cited evidence
-- View persisted investigation trace
+Minimum UI capabilities:
+- Start a new investigation from title, description, start time, and optional suspected service
+- Select an existing evaluation incident for demos
+- Display generated hypotheses and their statuses
+- Display tool calls and selected services
+- Display gathered evidence
+- Display stop reason
+- Display final RCA, confidence, and cited evidence
+- Display or link to the persisted investigation trace
 
 Suggested first implementation:
-- Streamlit
+- Streamlit for a fast prototype
 
 Possible later architecture:
 - FastAPI backend
 - React frontend
 
-This UI is an extended-scope usability layer and is not required for the core comparative experiment.
+The UI is a presentation and intake layer only; core investigation logic must remain in the existing TraceRoot modules.
 
 ---
 
@@ -777,13 +997,13 @@ This UI is an extended-scope usability layer and is not required for the core co
 
 ## 🟡 In Progress
 
-- TR-040 — README + Architecture + Results (documentation drafted; review and results pending)
+- TR-040 — README + Architecture + Capstone Report + Results
 
 ## ⬜ Next Up
 
-- TR-027 — DeepEval Setup
-- TR-028 — Root-Cause Accuracy Evaluator
-- TR-029 — Evidence Precision & Recall
+- TR-032 — Agent Trace Evaluator
+- TR-033 — Efficiency, Cost & Latency Instrumentation
+- TR-034 — Unified Evaluation Runner
 - TR-035 — Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios
 
 ## ✅ Done
@@ -815,13 +1035,18 @@ This UI is an extended-scope usability layer and is not required for the core co
 - TR-025 — Evidence-Grounded RCA Generation
 - TR-026 — Investigation Trace Persistence
 - TR-026A — Agent CLI / Demo Harness
+- TR-027 — DeepEval Setup
+- TR-028 — Root-Cause Accuracy Evaluator
+- TR-029 — Evidence Precision & Recall
+- TR-030 — DeepEval Faithfulness
+- TR-031 — DeepEval Relevancy
 
 ## 🟣 Stretch
 
 - TR-042 — MCP Evidence Server
 - TR-043 — LangGraph ↔ MCP Integration
 
-## 🔵 Extended
+## 🔵 Extended Scope
 
 - TR-044 — Live Incident Intake
 - TR-045 — Live Evidence Integrations
@@ -841,31 +1066,60 @@ This UI is an extended-scope usability layer and is not required for the core co
 8. Evaluate agent behavior as well as final answers.
 9. Add complexity only when evaluation supports it.
 10. MCP is optional and must not delay the core evaluation.
-11. Frozen incident files are the reproducible evaluation data surface, not the intended production incident-ingestion mechanism.
-12. Live integrations and UI work are extended scope and must not delay comparative evaluation or submission.
+11. File-backed incident evidence is the reproducible evaluation surface; live incident intake, production evidence integrations, and UI work are extended scope and must not delay comparative evaluation.
+12. Final documentation must explicitly cover Problem Definition, Data Processing, System Design, and Evals.
+13. Cost and latency must be measured and reported, not merely discussed.
+14. Chunking strategy and operational tool choices must be documented in the system design document.
+15. PII handling and data-source provenance must be explicitly documented.
+16. Evaluation/runtime errors and system failures must be recorded and analyzed rather than hidden.
+17. Final submission must expose public code plus either a hosted application or demo video.
+18. No comparative-superiority claim should be made before measured TR-036 results exist.
 
 ---
 
 # Current Focus
 
-**TR-027 — DeepEval Setup**, alongside review of the TR-040 documentation drafts.
+**TR-032 — Agent Trace Evaluator**, alongside progressive work on TR-040 documentation.
 
 Current state:
-- TR-001 through TR-026A complete
-- Knowledge-only RAG and agentic investigation execute and persist outputs
-- Agent investigation can be started through `scripts/investigate.py`
-- Three synthetic incidents and five engineering knowledge documents available
-- Retrieval benchmark, Recall@K evaluator, and evaluation contracts implemented
-- Full project validation currently at **194 tests passing**
-- README and architecture documentation are being updated
-- Final RCA evaluation, expanded dataset, comparative experiments, and failure analysis pending
-- No measured RCA accuracy or RAG-versus-agent improvement claimed
+- TR-001 through TR-031 complete
+- **218 tests passing**
+- Knowledge-only RAG and agentic investigation complete
+- Agent CLI/demo harness complete
+- DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, and relevancy evaluators complete
+- Three current synthetic incidents
+- OpenTelemetry-derived final dataset expansion pending
+- Comparative RAG-vs-Agent evaluation pending
+- README and architecture drafts exist
+- `CAPSTONE_REPORT.md` pending
+- No measured agent-superiority claim has been made
+
+Evaluation progress:
+
+```text
+Retrieval Recall@K             ✅
+DeepEval Setup                 ✅
+Root-Cause Accuracy            ✅
+Evidence Precision / Recall    ✅
+Faithfulness                   ✅
+Relevancy                      ✅
+Agent Trace Quality            ⬜
+Cost / Latency / Efficiency    ⬜
+Unified Evaluation Runner      ⬜
+RAG vs Agent Experiment        ⬜
+Failure / Error Analysis       ⬜
+```
 
 Next:
-1. Set up DeepEval within this repository and implement the remaining evaluation metrics and unified runner (TR-027–TR-034).
-2. Verify the three proposed OpenTelemetry scenarios, normalize and review their evidence, and freeze the final dataset (TR-035).
-3. Resolve incident-input parity, run both approaches on the frozen incidents, and analyze correctness, evidence quality, agent behavior, and efficiency (TR-036–TR-037).
-4. Make evidence-driven improvements, re-evaluate, and complete results documentation and the demo (TR-038–TR-041).
+1. Implement agent-trace evaluation (TR-032).
+2. Add cost, token, tool-call, and latency instrumentation (TR-033).
+3. Build the unified evaluation runner (TR-034).
+4. Verify, expand, audit, and freeze the final six-incident dataset (TR-035).
+5. Run RAG vs Agent comparative experiments (TR-036).
+6. Perform failure/error analysis (TR-037).
+7. Make evidence-driven improvements and re-evaluate only if time permits (TR-038–TR-039).
+8. Complete `CAPSTONE_REPORT.md`, architecture/results, and README (TR-040).
+9. Record and publish the demo video / public demo URL (TR-041).
 
 Known items to address during evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
@@ -873,4 +1127,9 @@ Known items to address during evaluation:
 - Recall@5 has limited discrimination on the small knowledge corpus
 - Baseline prompts use title/description; agent prompts include richer incident context, notably `suspected_services`
 - Guardrail stops and valid evidence IDs alone do not establish a correct or complete RCA
-- TR-026A demonstrated that a limited tool budget can identify an operational bottleneck without reaching the deeper deployment/code-change cause
+- Ground-truth supporting-evidence sets must be audited before final precision/recall reporting
+
+Extended scope after the core capstone:
+- TR-044 — Live Incident Intake
+- TR-045 — Live Evidence Integrations
+- TR-046 — Simple Investigation UI
