@@ -18,7 +18,7 @@ Research Question:
 | Epic 1 — Synthetic Incident Environment | ✅ DONE |
 | Epic 2 — RAG Baseline | ✅ DONE |
 | Epic 3 — Operational Evidence Tools | ✅ DONE |
-| Epic 4 — Agentic Investigation | ⬜ TODO |
+| Epic 4 — Agentic Investigation | 🟡 IN PROGRESS |
 | Epic 5 — Evaluation Framework | ⬜ TODO |
 | Epic 6 — Comparative Experiments | ⬜ TODO |
 | Epic 7 — Delivery | ⬜ TODO |
@@ -339,13 +339,97 @@ Completed:
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-020 | LangGraph Investigation State | 1h | ⬜ TODO |
-| TR-021 | Hypothesis Generation | 1h | ⬜ TODO |
-| TR-022 | Tool Selection & Investigation Loop | 2h | ⬜ TODO |
-| TR-023 | Hypothesis Verification/Rejection | 1h | ⬜ TODO |
-| TR-024 | Investigation Guardrails | 1h | ⬜ TODO |
+| TR-020 | LangGraph Investigation State | 1h | ✅ DONE |
+| TR-021 | Hypothesis Generation | 1h | ✅ DONE |
+| TR-022 | Tool Selection & Investigation Loop | 2h | ✅ DONE |
+| TR-023 | Hypothesis Verification/Rejection | 1h | ✅ DONE |
+| TR-024 | Investigation Guardrails | 1h | ✅ DONE |
 | TR-025 | Evidence-Grounded RCA Generation | 1h | ⬜ TODO |
 | TR-026 | Investigation Trace Persistence | 45m | ⬜ TODO |
+
+### TR-020 — LangGraph Investigation State
+
+Completed:
+- `HypothesisStatus`
+- `Hypothesis`
+- `ToolCallRecord`
+- `InvestigationState`
+- Incident state preservation
+- Hypothesis state tracking
+- Operational evidence ID tracking
+- Tool-call history tracking
+- Optional final RCA result
+- Independent mutable defaults
+- Investigation-state tests
+
+### TR-021 — Hypothesis Generation
+
+Completed:
+- Structured LLM-generated incident hypotheses
+- Configurable maximum hypothesis count
+- Incident-only prompt context
+- No operational evidence access during hypothesis generation
+- No ground-truth access
+- Generated hypotheses mapped to `Hypothesis`
+- Initial hypothesis status defaults to `OPEN`
+- Structured-output failure handling
+- Mocked LLM tests
+
+### TR-022 — Tool Selection & Investigation Loop
+
+Completed:
+- Structured `ToolSelection`
+- LLM-driven operational tool selection
+- Optional service filtering
+- Deterministic `execute_tool()` integration
+- Operational evidence gathering
+- Global evidence-ID deduplication
+- Per-call evidence history
+- Tool observations preserved for subsequent reasoning
+- Tool-selection reasoning preserved
+- Configurable investigation tool-call budget
+- Real INC-001 investigation flow manually verified
+
+### TR-023 — Hypothesis Verification/Rejection
+
+Completed:
+- Structured hypothesis assessment
+- `OPEN`, `SUPPORTED`, and `REJECTED` outcomes
+- Incident context included in verification
+- Existing hypotheses included in verification
+- Gathered operational observations included in verification
+- No new hypotheses created during verification
+- Existing investigation state preserved
+- Missing structured-output handling
+- Mocked LLM verification tests
+- Real INC-001 hypothesis verification manually verified
+
+### TR-024 — Investigation Guardrails
+
+Completed:
+- Investigation-wide tool-call budget
+- Existing tool history counts toward remaining budget
+- Explicit LLM-requested stop
+- Duplicate `(tool_name, service)` prevention
+- Previously attempted tool/service pairs reconstructed from history
+- Two-consecutive-empty-results guardrail
+- Selected service preserved in `ToolCallRecord`
+- Investigation `stop_reason` tracking
+- Investigation `stop_reasoning` tracking
+- Single LLM client reused during investigation
+- Tool-selection prompt documents available tools
+- Tool-selection prompt documents duplicate-call rule
+- Tool-selection prompt documents explicit stopping behavior
+- Guardrail unit tests updated
+- Ruff and full pytest validation passing
+- Real INC-001 smoke test successfully verified
+- Smoke test exercised:
+  - metrics / checkout-service
+  - logs / checkout-service
+  - deployments / checkout-service
+  - code_changes / checkout-service
+- Smoke test terminated correctly with `tool_budget_exhausted`
+- Changes committed and pushed
 
 ---
 
@@ -400,13 +484,13 @@ MCP must not delay the core experiment.
 
 ## 🟡 In Progress
 
-- None — TR-019 checkpoint ready to commit
+- None
 
 ## ⬜ Next Up
 
-- TR-020 — LangGraph Investigation State
-- TR-021 — Hypothesis Generation
-- TR-022 — Tool Selection & Investigation Loop
+- TR-025 — Evidence-Grounded RCA Generation
+- TR-026 — Investigation Trace Persistence
+- TR-027 — DeepEval Setup
 
 ## ✅ Done
 
@@ -429,6 +513,11 @@ MCP must not delay the core experiment.
 - TR-017 — Deployment Tool
 - TR-018 — Git Changes Tool
 - TR-019 — Tool Interface + Tests
+- TR-020 — LangGraph Investigation State
+- TR-021 — Hypothesis Generation
+- TR-022 — Tool Selection & Investigation Loop
+- TR-023 — Hypothesis Verification/Rejection
+- TR-024 — Investigation Guardrails
 
 ## 🟣 Stretch
 
@@ -454,19 +543,23 @@ MCP must not delay the core experiment.
 
 # Current Focus
 
-**TR-019 — Tool Interface + Tests**
+**TR-025 — Evidence-Grounded RCA Generation**
 
 Goal:
 
-Complete and commit the unified operational-evidence tool gateway before starting the agentic investigation epic.
+Generate the final RCA from the completed investigation state using only agent-visible incident information, verified hypotheses, and gathered operational evidence.
 
 Current state:
-- implementation complete
-- interface tests complete
-- real INC-001 interface smoke test complete
-- 117 tests passing
-- ready to commit/push
+- TR-020 investigation state complete
+- TR-021 hypothesis generation complete
+- TR-022 tool-selection and investigation loop complete
+- TR-023 hypothesis verification complete
+- TR-024 investigation guardrails complete
+- TR-024 validation complete
+- TR-024 real INC-001 smoke test complete
+- TR-024 committed and pushed
+- TR-025 not started
 
-Next after commit:
+Next:
 
-**TR-020 — LangGraph Investigation State**
+**TR-025 — Evidence-Grounded RCA Generation**
