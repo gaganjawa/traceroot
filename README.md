@@ -6,11 +6,11 @@ TraceRoot is an AI engineering capstone comparing two approaches to root-cause a
 
 > Can agentic evidence gathering improve root-cause identification and evidence grounding compared with knowledge-only RAG for software production incidents?
 
-## Current state — through TR-026
+## Current state — first release through TR-039
 
-The core implementation includes a knowledge-only RAG baseline, deterministic operational evidence tools, an agentic investigation loop with guardrails, final RCA generation, and JSON experiment/trace persistence. The repository contains three synthetic incidents, five engineering knowledge documents, and a separate 10-query retrieval benchmark with Recall@K evaluation.
+TraceRoot includes a knowledge-only RAG baseline and an agentic investigator with deterministic logs, metrics, deployments, and code-change tools. The agent generates and verifies hypotheses, gathers operational evidence, and produces an RCA; investigation traces and results are persisted. Evaluation combines DeepEval with deterministic evidence and trace metrics, and runtime instrumentation records latency, token usage, and estimated cost.
 
-TR-025 and TR-026 are implemented and committed. [The project board](PROJECT_BOARD.md) tracks completed work and the remaining evaluation and delivery tasks. Functional tests and smoke runs establish execution behavior, **not measured RCA accuracy or agent superiority**. Final comparative evaluation and failure analysis are pending.
+The first release evaluates RAG and Agent approaches on the same frozen six-incident dataset, includes pre- and post-TR-038 comparisons, and provides both CLI and Streamlit demos. See the [failure analysis](docs/TR037_FAILURE_ANALYSIS.md) and [post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md) for detailed methods, results, and limitations.
 
 ## Two approaches
 
@@ -19,7 +19,35 @@ TR-025 and TR-026 are implemented and committed. [The project board](PROJECT_BOA
 | Knowledge-only RAG baseline | Incident title/description plus engineering knowledge retrieved from Qdrant | Structured RCA and separate retrieval provenance; operational `evidence_ids` remain empty |
 | Agentic investigation | Incident context, hypotheses, and selected logs, metrics, deployments, and code changes from local incident files | Structured RCA referencing gathered evidence, plus investigation trace |
 
-The current agent does not retrieve the RAG knowledge corpus. Both approaches return `RCAResult`. Ground truth is evaluator-only and excluded from runtime inputs. The intended comparison uses the same frozen incidents; incident-field parity, including `suspected_services`, still needs resolution before final experiments.
+The agent does not retrieve the RAG knowledge corpus. Both approaches return `RCAResult`, and ground truth is evaluator-only: it is used for evaluation, never supplied to either approach at runtime. Inputs are not fully at parity: RAG retrieval uses the incident title and description, while the Agent receives richer incident context, including `suspected_services` when present.
+
+## Evaluation dataset
+
+The frozen evaluation set contains six incidents. `INC-001` to `INC-003` are controlled synthetic incidents; `INC-004` to `INC-006` are synthetic/adapted scenarios based on OpenTelemetry Demo / Astronomy Shop failure modes. They are not captured production traces.
+
+## Evaluation results
+
+Initial six-incident comparison:
+
+| Measure | RAG | Agent |
+|---|---:|---:|
+| Mean RCA accuracy | ~0.477 | ~0.771 |
+| Mean latency | ~3.18 s | ~15.63 s |
+| Mean runtime cost | ~$0.00158 | ~$0.01164 |
+
+Post-TR-038 deterministic Agent metrics:
+
+| Metric | Before | After |
+|---|---:|---:|
+| Evidence precision | 0.405 | 0.486 |
+| Evidence recall | 0.744 | 0.867 |
+| Evidence coverage | 0.800 | 0.867 |
+| Empty-tool rate | 0.306 | 0.225 |
+| Stop quality | 0.250 | 0.583 |
+
+The improvement increased evidence gathering quality and stopping behavior, but also increased average tool/LLM usage and runtime cost.
+
+TR-038 is **not shown to improve RCA accuracy**: the post-improvement LLM-judged Agent RCA mean was lower in that single run (0.614 vs 0.771). Unchanged RAG scores also varied substantially between runs. The strongest evidence for TR-038 is therefore the deterministic trace/evidence metrics and manual trace inspection, not a single LLM-judge comparison.
 
 See [Architecture and demo walkthrough](docs/ARCHITECTURE.md) for Mermaid diagrams, runtime flow, and experimental boundaries.
 
@@ -70,28 +98,31 @@ Live runs make model API calls and overwrite the named output artifact if it alr
 ## Project structure
 
 ```text
-data/incidents/       Incident descriptions and operational evidence
+data/incidents/       Six frozen incident descriptions and operational evidence
 data/knowledge/       General engineering documentation for RAG
 data/ground_truth/    Evaluator-only answers and supporting evidence labels
 data/evaluation/      Retrieval benchmark
 src/traceroot/        Domain models, data loading, RAG, baseline, tools,
                       agent, experiment persistence, and evaluation contracts
-scripts/              Baseline run entry point
-tests/                Automated tests
-experiments/results/  Generated experiment artifacts
-docs/                 Project architecture and demo explanation
+scripts/run_baseline.py            RAG baseline runner
+scripts/investigate.py             Agent CLI / demo harness
+scripts/run_comparison.py          Comparative experiment runner
+tests/                             Automated tests
+experiments/results/               Generated experiment artifacts
+experiments/comparison/            Pre-TR-038 evaluation artifacts
+experiments/comparison-post-tr038/ Post-TR-038 evaluation artifacts
+docs/                              Project architecture and demo explanation
+docs/TR037_FAILURE_ANALYSIS.md
+docs/TR039_POST_IMPROVEMENT_EVALUATION.md
 ```
 
-## Remaining work
+## Release scope and future work
 
-- TR-027–TR-034: RCA and evidence evaluators, quality/trace evaluation, efficiency instrumentation, and unified evaluation runner.
-- TR-035: expand and freeze the final dataset, retaining the three synthetic cases and adding planned OpenTelemetry Demo / Astronomy Shop-derived scenarios (ad service failure, email memory leak, cart service failure). These additions are not yet present.
-- TR-036–TR-039: comparative experiments, failure analysis, evidence-driven improvement, and re-evaluation.
-- Complete delivery documentation and demo. MCP integration remains optional stretch work.
-
-Retrieval quality is evaluated separately from RCA quality. No final evaluation scores are claimed here.
+The first release uses reproducible, file-backed evidence. MCP integration is stretch work. Live incident intake, live observability/deployment/Git integrations, and production deployment are future work.
 
 ## Streamlit UI
+
+The Streamlit app is a demo/presentation layer over the investigation and evaluation flows. Frozen incidents have local operational evidence; manually created incidents currently have no live telemetry integration.
 
 From the repository root, install dependencies with `uv sync`, configure
 `OPENAI_API_KEY` in `.env` or the environment, then run:
@@ -106,10 +137,9 @@ runner and displays hypotheses, tool observations, stop reasoning, and the final
 RCA. Completed experiment records are saved with unique filenames under
 `experiments/results/ui/`.
 
-New incidents require no manual JSON files. Since the current operational tools
-only read local datasets, the UI creates an empty temporary dataset for each new
-investigation and removes it afterward. No live telemetry is connected: these
-runs have no evidence and their RCA should be treated as ungrounded.
+New incidents require no manual JSON files. Since operational tools currently
+read local datasets only, manually created incidents have no operational evidence
+or live telemetry, and their RCA should be treated as ungrounded.
 
 For completed frozen incidents, **Evaluate Result** invokes the existing evaluation
 runner and displays its available metrics and execution measurements. Ground truth
