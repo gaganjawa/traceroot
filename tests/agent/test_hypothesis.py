@@ -6,6 +6,7 @@ import pytest
 from traceroot.agent.hypothesis import GeneratedHypotheses, generate_hypotheses
 from traceroot.agent.state import Hypothesis, HypothesisStatus
 from traceroot.domain.incident import Incident
+from traceroot.llm.usage import LLMUsage
 
 
 def create_test_incident() -> Incident:
@@ -222,3 +223,67 @@ def test_generate_hypotheses_raises_when_structured_output_is_missing(
         generate_hypotheses(
             incident=create_test_incident(),
         )
+
+
+@patch("traceroot.agent.hypothesis.get_llm_client")
+def test_generate_hypotheses_records_llm_usage(
+    mock_get_llm_client,
+):
+    usage = LLMUsage()
+
+    mock_response = MagicMock()
+    mock_response.output_parsed = GeneratedHypotheses(
+        hypotheses=[
+            "Database connection exhaustion",
+        ]
+    )
+    mock_response.usage.input_tokens = 120
+    mock_response.usage.output_tokens = 30
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.return_value = mock_response
+    mock_get_llm_client.return_value = mock_client
+
+    result = generate_hypotheses(
+        incident=create_test_incident(),
+        llm_usage=usage,
+    )
+
+    assert len(result) == 1
+    assert result[0].description == "Database connection exhaustion"
+
+    assert usage.input_tokens == 120
+    assert usage.output_tokens == 30
+    assert usage.total_tokens == 150
+    assert usage.llm_calls == 1
+
+
+@patch("traceroot.agent.hypothesis.get_llm_client")
+def test_generate_hypotheses_records_call_when_token_usage_unavailable(
+    mock_get_llm_client,
+):
+    usage = LLMUsage()
+
+    mock_response = MagicMock()
+    mock_response.output_parsed = GeneratedHypotheses(
+        hypotheses=[
+            "Database connection exhaustion",
+        ]
+    )
+    mock_response.usage = None
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.return_value = mock_response
+    mock_get_llm_client.return_value = mock_client
+
+    result = generate_hypotheses(
+        incident=create_test_incident(),
+        llm_usage=usage,
+    )
+
+    assert len(result) == 1
+
+    assert usage.input_tokens is None
+    assert usage.output_tokens is None
+    assert usage.total_tokens is None
+    assert usage.llm_calls == 1

@@ -15,6 +15,7 @@ from traceroot.agent.state import (
     ToolCallRecord,
 )
 from traceroot.domain.incident import Incident
+from traceroot.llm.usage import LLMUsage
 
 
 def create_test_state() -> InvestigationState:
@@ -185,3 +186,56 @@ def test_generate_final_rca_prompt_does_not_include_ground_truth():
     prompt = build_context_from_state(state)
 
     assert "ground_truth" not in prompt.lower()
+
+
+@patch("traceroot.agent.rca.get_llm_client")
+def test_generate_final_rca_records_llm_usage(
+    mock_get_llm_client,
+):
+    usage = LLMUsage()
+    state = create_test_state()
+
+    mock_response = MagicMock(output_parsed=create_generated_rca())
+    mock_response.usage.input_tokens = 180
+    mock_response.usage.output_tokens = 45
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.return_value = mock_response
+    mock_get_llm_client.return_value = mock_client
+
+    result = generate_final_rca(
+        state,
+        llm_usage=usage,
+    )
+
+    assert result.final_result is not None
+
+    assert usage.input_tokens == 180
+    assert usage.output_tokens == 45
+    assert usage.total_tokens == 225
+    assert usage.llm_calls == 1
+
+
+@patch("traceroot.agent.rca.get_llm_client")
+def test_generate_final_rca_records_call_when_token_usage_unavailable(
+    mock_get_llm_client,
+):
+    usage = LLMUsage()
+    state = create_test_state()
+
+    mock_response = MagicMock(output_parsed=create_generated_rca())
+    mock_response.usage = None
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.return_value = mock_response
+    mock_get_llm_client.return_value = mock_client
+
+    generate_final_rca(
+        state,
+        llm_usage=usage,
+    )
+
+    assert usage.input_tokens is None
+    assert usage.output_tokens is None
+    assert usage.total_tokens is None
+    assert usage.llm_calls == 1

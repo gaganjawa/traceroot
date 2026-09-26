@@ -10,6 +10,7 @@ from traceroot.baseline.rag import (
     generate_rca,
 )
 from traceroot.domain.incident import Incident
+from traceroot.llm.usage import LLMUsage
 from traceroot.rag.models import KnowledgeChunk, RetrievalResult
 
 
@@ -286,3 +287,58 @@ def test_generate_rag_rca_end_to_end_with_mocked_dependencies(
         "Checkout requests wait on the database connection pool "
         "when it is saturated." in user_prompt
     )
+
+
+@patch("traceroot.baseline.rag.get_llm_client")
+def test_generate_rca_records_llm_usage(
+    mock_get_llm_client,
+):
+    usage = LLMUsage()
+
+    mock_client = MagicMock()
+    mock_get_llm_client.return_value = mock_client
+
+    mock_response = MagicMock()
+    mock_response.output_parsed = create_generated_rca()
+    mock_response.usage.input_tokens = 120
+    mock_response.usage.output_tokens = 30
+
+    mock_client.responses.parse.return_value = mock_response
+
+    generate_rca(
+        incident=create_incident(),
+        context="retrieved knowledge",
+        llm_usage=usage,
+    )
+
+    assert usage.input_tokens == 120
+    assert usage.output_tokens == 30
+    assert usage.total_tokens == 150
+    assert usage.llm_calls == 1
+
+
+@patch("traceroot.baseline.rag.get_llm_client")
+def test_generate_rca_records_call_when_token_usage_unavailable(
+    mock_get_llm_client,
+):
+    usage = LLMUsage()
+
+    mock_client = MagicMock()
+    mock_get_llm_client.return_value = mock_client
+
+    mock_response = MagicMock()
+    mock_response.output_parsed = create_generated_rca()
+    mock_response.usage = None
+
+    mock_client.responses.parse.return_value = mock_response
+
+    generate_rca(
+        incident=create_incident(),
+        context="retrieved knowledge",
+        llm_usage=usage,
+    )
+
+    assert usage.input_tokens is None
+    assert usage.output_tokens is None
+    assert usage.total_tokens is None
+    assert usage.llm_calls == 1

@@ -163,7 +163,7 @@ def test_evaluate_rag_record_runs_expected_metrics(
 @patch("traceroot.evaluation.runner.evaluate_relevancy")
 @patch("traceroot.evaluation.runner.evaluate_faithfulness")
 @patch("traceroot.evaluation.runner.evaluate_root_cause_accuracy")
-def test_evaluate_rag_record_sets_execution_metrics(
+def test_evaluate_rag_record_preserves_execution_usage(
     mock_accuracy,
     mock_faithfulness,
     mock_relevancy,
@@ -172,8 +172,14 @@ def test_evaluate_rag_record_sets_execution_metrics(
     mock_faithfulness.return_value = make_metric("Faithfulness")
     mock_relevancy.return_value = make_metric("Relevancy")
 
+    record = make_rag_record()
+    record.input_tokens = 100
+    record.output_tokens = 25
+    record.llm_calls = 1
+    record.estimated_cost_usd = 0.01
+
     result = evaluate_rag_record(
-        record=make_rag_record(),
+        record=record,
         ground_truth=make_ground_truth(),
         retrieval_context=["context"],
     )
@@ -181,6 +187,12 @@ def test_evaluate_rag_record_sets_execution_metrics(
     assert result.execution is not None
     assert result.execution.latency_ms == 500.0
     assert result.execution.tool_calls == 0
+    assert result.execution.investigation_steps is None
+    assert result.execution.input_tokens == 100
+    assert result.execution.output_tokens == 25
+    assert result.execution.total_tokens == 125
+    assert result.execution.llm_calls == 1
+    assert result.execution.estimated_cost_usd == 0.01
 
 
 # AGENT
@@ -296,7 +308,7 @@ def test_evaluate_agent_record_flattens_tool_observations_for_faithfulness(
 @patch("traceroot.evaluation.runner.evaluate_faithfulness")
 @patch("traceroot.evaluation.runner.evaluate_evidence_precision_recall")
 @patch("traceroot.evaluation.runner.evaluate_root_cause_accuracy")
-def test_evaluate_agent_record_sets_execution_metrics(
+def test_evaluate_agent_record_preserves_execution_usage(
     mock_accuracy,
     mock_evidence,
     mock_faithfulness,
@@ -312,8 +324,14 @@ def test_evaluate_agent_record_sets_execution_metrics(
     mock_relevancy.return_value = make_metric("Relevancy")
     mock_trace.return_value = []
 
+    record = make_agent_record()
+    record.input_tokens = 400
+    record.output_tokens = 80
+    record.llm_calls = 4
+    record.estimated_cost_usd = 0.02
+
     result = evaluate_agent_record(
-        make_agent_record(),
+        record,
         make_ground_truth(),
     )
 
@@ -321,3 +339,40 @@ def test_evaluate_agent_record_sets_execution_metrics(
     assert result.execution.latency_ms == 800.0
     assert result.execution.tool_calls == 2
     assert result.execution.investigation_steps == 2
+
+    assert result.execution.input_tokens == 400
+    assert result.execution.output_tokens == 80
+    assert result.execution.total_tokens == 480
+    assert result.execution.llm_calls == 4
+    assert result.execution.estimated_cost_usd == 0.02
+
+
+@patch("traceroot.evaluation.runner.evaluate_relevancy")
+@patch("traceroot.evaluation.runner.evaluate_faithfulness")
+@patch("traceroot.evaluation.runner.evaluate_root_cause_accuracy")
+def test_evaluate_rag_record_preserves_unavailable_usage(
+    mock_accuracy,
+    mock_faithfulness,
+    mock_relevancy,
+):
+    mock_accuracy.return_value = make_metric("Root Cause Accuracy")
+    mock_faithfulness.return_value = make_metric("Faithfulness")
+    mock_relevancy.return_value = make_metric("Relevancy")
+
+    record = make_rag_record()
+    record.input_tokens = None
+    record.output_tokens = None
+    record.llm_calls = 1
+
+    result = evaluate_rag_record(
+        record=record,
+        ground_truth=make_ground_truth(),
+        retrieval_context=["context"],
+    )
+
+    assert result.execution is not None
+    assert result.execution.input_tokens is None
+    assert result.execution.output_tokens is None
+    assert result.execution.total_tokens is None
+    assert result.execution.llm_calls == 1
+    assert result.execution.estimated_cost_usd is None

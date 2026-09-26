@@ -11,6 +11,7 @@ from traceroot.agent.state import (
 )
 from traceroot.data.models import LogEntry, MetricEntry
 from traceroot.domain.incident import Incident
+from traceroot.llm.usage import LLMUsage
 from traceroot.tools.interface import ToolName
 
 
@@ -420,3 +421,114 @@ def test_investigate_raises_when_tool_selection_is_missing(
             state=create_test_state(),
             max_tool_calls=1,
         )
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_records_llm_usage(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    usage = LLMUsage()
+
+    mock_response = create_mock_llm_response(
+        ToolName.LOGS,
+        "checkout-service",
+    )
+    mock_response.usage.input_tokens = 200
+    mock_response.usage.output_tokens = 40
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.return_value = mock_response
+    mock_get_llm_client.return_value = mock_client
+
+    mock_execute_tool.return_value = [MagicMock(id="LOG-TEST-01")]
+
+    investigate(
+        state=create_test_state(),
+        max_tool_calls=1,
+        llm_usage=usage,
+    )
+
+    assert usage.input_tokens == 200
+    assert usage.output_tokens == 40
+    assert usage.total_tokens == 240
+    assert usage.llm_calls == 1
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_records_call_when_token_usage_unavailable(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    usage = LLMUsage()
+
+    mock_response = create_mock_llm_response(
+        ToolName.LOGS,
+        "checkout-service",
+    )
+    mock_response.usage = None
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.return_value = mock_response
+    mock_get_llm_client.return_value = mock_client
+
+    mock_execute_tool.return_value = [MagicMock(id="LOG-TEST-01")]
+
+    investigate(
+        state=create_test_state(),
+        max_tool_calls=1,
+        llm_usage=usage,
+    )
+
+    assert usage.input_tokens is None
+    assert usage.output_tokens is None
+    assert usage.total_tokens is None
+    assert usage.llm_calls == 1
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_accumulates_llm_usage_across_selections(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    usage = LLMUsage()
+
+    first_response = create_mock_llm_response(
+        ToolName.LOGS,
+        "checkout-service",
+    )
+    first_response.usage.input_tokens = 200
+    first_response.usage.output_tokens = 40
+
+    second_response = create_mock_llm_response(
+        ToolName.METRICS,
+        "checkout-service",
+    )
+    second_response.usage.input_tokens = 250
+    second_response.usage.output_tokens = 50
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.side_effect = [
+        first_response,
+        second_response,
+    ]
+    mock_get_llm_client.return_value = mock_client
+
+    mock_execute_tool.side_effect = [
+        [MagicMock(id="LOG-TEST-01")],
+        [MagicMock(id="METRIC-TEST-01")],
+    ]
+
+    investigate(
+        state=create_test_state(),
+        max_tool_calls=2,
+        llm_usage=usage,
+    )
+
+    assert usage.input_tokens == 450
+    assert usage.output_tokens == 90
+    assert usage.total_tokens == 540
+    assert usage.llm_calls == 2

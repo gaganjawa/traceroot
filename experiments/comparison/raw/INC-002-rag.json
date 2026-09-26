@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-002",
+    "approach": "rag_baseline",
+    "model": "gpt-5.4-mini",
+    "top_k": 3,
+    "retrieved_knowledge": [
+        {
+            "chunk_id": "payment-runbook.md::0",
+            "source": "payment-runbook.md",
+            "score": 0.6341405787146506
+        },
+        {
+            "chunk_id": "checkout-runbook.md::0",
+            "source": "checkout-runbook.md",
+            "score": 0.48458071615931014
+        },
+        {
+            "chunk_id": "architecture.md::0",
+            "source": "architecture.md",
+            "score": 0.4470596499343599
+        }
+    ],
+    "result": {
+        "incident_id": "INC-002",
+        "root_cause": "Insufficient evidence to determine a confirmed root cause; the most likely failure domain is payment-service or the external payment provider during authorization, possibly due to provider validation/rejection of authorization requests.",
+        "affected_service": "payment-service",
+        "evidence_ids": [],
+        "explanation": "The incident description says checkout sessions can be created, but some payments fail during authorization. Per the architecture, authorization is handled by checkout-service coordinating with payment-service and then the external payment provider. The runbook indicates that authorization failures commonly stem from provider 4xx validation errors, provider timeouts/5xxs, or request mapping/serialization changes, but no provider codes, validation messages, latency data, or deployment evidence were supplied. Therefore, the evidence only supports localizing the issue to the payment authorization path, not confirming a specific root cause. checkout-service is less likely to be the primary issue because session creation still works, while the failure occurs later during authorization.",
+        "confidence": 0.36
+    },
+    "latency_ms": 3386.9920420002018,
+    "input_tokens": 870,
+    "output_tokens": 206,
+    "llm_calls": 1,
+    "estimated_cost_usd": 0.0015795,
+    "timestamp": "2026-09-26T17:56:50.654634Z"
+}

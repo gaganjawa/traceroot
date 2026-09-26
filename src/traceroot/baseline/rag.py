@@ -4,6 +4,7 @@ from qdrant_client import QdrantClient
 from traceroot.domain.incident import Incident
 from traceroot.domain.rca import RCAResult
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
+from traceroot.llm.usage import LLMUsage, record_response_usage
 from traceroot.rag.models import RetrievalResult
 from traceroot.rag.retriever import retrieve
 
@@ -23,6 +24,7 @@ class GeneratedRCA(BaseModel):
 def generate_rca(
     incident: Incident,
     context: str,
+    llm_usage: LLMUsage | None = None,
 ) -> GeneratedRCA:
     """Generate a knowledge-only RCA using semantically retrieved engineering documentation."""
 
@@ -67,6 +69,11 @@ def generate_rca(
         text_format=GeneratedRCA,
     )
 
+    record_response_usage(
+        llm_usage=llm_usage,
+        response=response,
+    )
+
     generated = response.output_parsed
 
     if generated is None:
@@ -94,6 +101,7 @@ def run_rag_baseline(
     qdrant_client: QdrantClient,
     incident: Incident,
     top_k: int = 5,
+    llm_usage: LLMUsage | None = None,
 ) -> RAGBaselineResult:
     """
     Generate a Root Cause Analysis (RCA) result for a given incident using Retrieval-Augmented Generation (RAG).
@@ -102,6 +110,7 @@ def run_rag_baseline(
         qdrant_client (QdrantClient): The Qdrant client for querying the knowledge base.
         incident (Incident): The incident for which to generate the RCA.
         top_k (int): The number of top retrieved sources to consider.
+        llm_usage (LLMUsage | None): Optional accumulator for generation usage.
 
     Returns:
         RAGBaselineResult: The generated RCA result containing the incident, retrieved sources, and the generated RCA text.
@@ -115,7 +124,7 @@ def run_rag_baseline(
     context = build_context(retrieval_results)
 
     # Generate RCA text using the retrieved sources and the incident description
-    generated = generate_rca(incident, context)
+    generated = generate_rca(incident, context, llm_usage=llm_usage)
 
     rca_result = RCAResult(
         incident_id=incident.id,

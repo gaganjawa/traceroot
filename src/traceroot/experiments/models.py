@@ -23,6 +23,11 @@ class BaselineExperimentRecord(BaseModel):
     result: RCAResult
 
     latency_ms: float = Field(ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    llm_calls: int | None = Field(default=None, ge=0)
+    estimated_cost_usd: float | None = Field(default=None, ge=0)
+
     timestamp: datetime
 
 
@@ -30,11 +35,21 @@ class AgentExperimentRecord(BaseModel):
     incident_id: str
     approach: str = "agent"
     model: str
+
     hypotheses: list[Hypothesis]
     evidence_ids: list[str]
     tool_history: list[ToolCallRecord]
+
     stop_reason: str | None = None
     stop_reasoning: str | None = None
+
     result: RCAResult
-    latency_ms: float
+
+    latency_ms: float = Field(ge=0)
+
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    llm_calls: int | None = Field(default=None, ge=0)
+    estimated_cost_usd: float | None = Field(default=None, ge=0)
+
     timestamp: datetime

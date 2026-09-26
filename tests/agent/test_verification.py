@@ -15,6 +15,7 @@ from traceroot.agent.verification import (
     verify_hypotheses,
 )
 from traceroot.domain.incident import Incident
+from traceroot.llm.usage import LLMUsage
 
 
 def create_test_incident() -> Incident:
@@ -293,3 +294,70 @@ def test_verify_hypotheses_prompt_uses_only_allowed_state(
     assert "Timed out waiting for database connection" in prompt
 
     assert "ground_truth" not in prompt.lower()
+
+
+@patch("traceroot.agent.verification.get_llm_client")
+def test_verify_hypotheses_records_llm_usage(
+    mock_get_llm_client,
+):
+    usage = LLMUsage()
+
+    mock_response = create_mock_response(
+        [
+            HypothesisAssessment(
+                description="Database connection exhaustion",
+                status=HypothesisStatus.SUPPORTED,
+                reasoning="Metrics and logs support connection exhaustion.",
+            )
+        ]
+    )
+    mock_response.usage.input_tokens = 160
+    mock_response.usage.output_tokens = 35
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.return_value = mock_response
+    mock_get_llm_client.return_value = mock_client
+
+    result = verify_hypotheses(
+        create_test_state(),
+        llm_usage=usage,
+    )
+
+    assert result.hypotheses[0].status == HypothesisStatus.SUPPORTED
+
+    assert usage.input_tokens == 160
+    assert usage.output_tokens == 35
+    assert usage.total_tokens == 195
+    assert usage.llm_calls == 1
+
+
+@patch("traceroot.agent.verification.get_llm_client")
+def test_verify_hypotheses_records_call_when_token_usage_unavailable(
+    mock_get_llm_client,
+):
+    usage = LLMUsage()
+
+    mock_response = create_mock_response(
+        [
+            HypothesisAssessment(
+                description="Database connection exhaustion",
+                status=HypothesisStatus.SUPPORTED,
+                reasoning="Metrics and logs support connection exhaustion.",
+            )
+        ]
+    )
+    mock_response.usage = None
+
+    mock_client = MagicMock()
+    mock_client.responses.parse.return_value = mock_response
+    mock_get_llm_client.return_value = mock_client
+
+    verify_hypotheses(
+        create_test_state(),
+        llm_usage=usage,
+    )
+
+    assert usage.input_tokens is None
+    assert usage.output_tokens is None
+    assert usage.total_tokens is None
+    assert usage.llm_calls == 1

@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 from traceroot.agent.state import InvestigationState, ToolCallRecord
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
+from traceroot.llm.usage import LLMUsage, record_response_usage
 from traceroot.tools.interface import ToolName, execute_tool
 
 
@@ -52,6 +53,7 @@ def build_prompt(state: InvestigationState) -> str:
 def investigate(
     state: InvestigationState,
     max_tool_calls: int = 6,
+    llm_usage: LLMUsage | None = None,
 ) -> InvestigationState:
     if max_tool_calls <= 0:
         raise ValueError("max_tool_calls must be a positive integer.")
@@ -78,6 +80,11 @@ def investigate(
             model=LLM_MODEL_GPT_5_4_MINI,
             input=prompt,
             text_format=ToolSelection,
+        )
+
+        record_response_usage(
+            llm_usage=llm_usage,
+            response=response,
         )
 
         selection = response.output_parsed

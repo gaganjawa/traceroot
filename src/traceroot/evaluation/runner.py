@@ -1,10 +1,11 @@
 from traceroot.domain.ground_truth import GroundTruth
 from traceroot.evaluation.agent_trace import evaluate_agent_trace
+from traceroot.evaluation.efficiency import create_execution_metrics
 from traceroot.evaluation.evidence import evaluate_evidence_precision_recall
 from traceroot.evaluation.faithfulness import evaluate_faithfulness
 from traceroot.evaluation.relevancy import evaluate_relevancy
 from traceroot.evaluation.root_cause_accuracy import evaluate_root_cause_accuracy
-from traceroot.evaluation.schemas import EvaluationResult, ExecutionMetrics
+from traceroot.evaluation.schemas import EvaluationResult
 from traceroot.experiments.models import AgentExperimentRecord, BaselineExperimentRecord
 
 
@@ -32,8 +33,12 @@ def evaluate_rag_record(
         ),
     ]
 
-    execution_metrics = ExecutionMetrics(
+    execution_metrics = create_execution_metrics(
         latency_ms=record.latency_ms,
+        input_tokens=record.input_tokens,
+        output_tokens=record.output_tokens,
+        llm_calls=record.llm_calls,
+        estimated_cost_usd=record.estimated_cost_usd,
         tool_calls=0,
     )
 
@@ -86,8 +91,12 @@ def evaluate_agent_record(
         )
     )
 
-    execution_metrics = ExecutionMetrics(
+    execution_metrics = create_execution_metrics(
         latency_ms=record.latency_ms,
+        input_tokens=record.input_tokens,
+        output_tokens=record.output_tokens,
+        llm_calls=record.llm_calls,
+        estimated_cost_usd=record.estimated_cost_usd,
         tool_calls=len(record.tool_history),
         investigation_steps=len(record.tool_history),
     )

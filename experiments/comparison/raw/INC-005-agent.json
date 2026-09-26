@@ -1,0 +1,105 @@
+{
+    "incident_id": "INC-005",
+    "approach": "agent",
+    "model": "gpt-5.4-mini",
+    "hypotheses": [
+        {
+            "description": "email-service is accumulating a backlog or queue growth under sustained checkout traffic, causing message processing latency to increase and eventual request timeouts/failures.",
+            "status": "supported"
+        },
+        {
+            "description": "email-service has a resource leak or saturation issue (for example, worker threads, DB connections, or outbound SMTP connections) that worsens with sustained load and progressively slows email sending.",
+            "status": "supported"
+        },
+        {
+            "description": "checkout-service may be generating duplicate or retrying confirmation email requests under sustained traffic, creating excess load on email-service and causing delayed processing and failures.",
+            "status": "open"
+        }
+    ],
+    "evidence_ids": [
+        "METRIC-005-01",
+        "METRIC-005-02",
+        "METRIC-005-03",
+        "METRIC-005-04",
+        "METRIC-005-05",
+        "LOG-005-01",
+        "LOG-005-02",
+        "LOG-005-03",
+        "LOG-005-04",
+        "LOG-005-05"
+    ],
+    "tool_history": [
+        {
+            "tool_name": "metrics",
+            "service": "email-service",
+            "evidence_ids": [
+                "METRIC-005-01",
+                "METRIC-005-02",
+                "METRIC-005-03",
+                "METRIC-005-04",
+                "METRIC-005-05"
+            ],
+            "observations": [
+                "id='METRIC-005-01' timestamp=datetime.datetime(2026, 9, 21, 10, 55, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=128.0 unit='MiB'",
+                "id='METRIC-005-02' timestamp=datetime.datetime(2026, 9, 21, 11, 10, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=231.0 unit='MiB'",
+                "id='METRIC-005-03' timestamp=datetime.datetime(2026, 9, 21, 11, 25, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=428.0 unit='MiB'",
+                "id='METRIC-005-04' timestamp=datetime.datetime(2026, 9, 21, 11, 36, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=782.0 unit='MiB'",
+                "id='METRIC-005-05' timestamp=datetime.datetime(2026, 9, 21, 11, 36, tzinfo=TzInfo(0)) service='email-service' metric='email.processing.duration.p95' value=1840.0 unit='ms'"
+            ],
+            "reasoning": "The leading hypotheses involve progressive slowdown, backlog growth, and resource saturation in email-service. Metrics on queue depth, processing latency, error rates, worker utilization, and connection pool usage will most directly confirm or refute these patterns before digging into logs or deployments."
+        },
+        {
+            "tool_name": "logs",
+            "service": "email-service",
+            "evidence_ids": [
+                "LOG-005-01",
+                "LOG-005-02",
+                "LOG-005-03",
+                "LOG-005-04",
+                "LOG-005-05"
+            ],
+            "observations": [
+                "id='LOG-005-01' timestamp=datetime.datetime(2026, 9, 21, 10, 55, tzinfo=TzInfo(0)) service='email-service' level='INFO' message='Order confirmation email processed successfully'",
+                "id='LOG-005-02' timestamp=datetime.datetime(2026, 9, 21, 11, 8, tzinfo=TzInfo(0)) service='email-service' level='INFO' message='Order confirmation email processed successfully processing_ms=185'",
+                "id='LOG-005-03' timestamp=datetime.datetime(2026, 9, 21, 11, 20, tzinfo=TzInfo(0)) service='email-service' level='WARN' message='Email processing latency elevated processing_ms=740'",
+                "id='LOG-005-04' timestamp=datetime.datetime(2026, 9, 21, 11, 31, tzinfo=TzInfo(0)) service='email-service' level='WARN' message='Memory pressure detected while rendering confirmation email'",
+                "id='LOG-005-05' timestamp=datetime.datetime(2026, 9, 21, 11, 37, tzinfo=TzInfo(0)) service='email-service' level='ERROR' message='Order confirmation email processing failed after memory allocation error'"
+            ],
+            "reasoning": "Metrics already show growing memory usage and high email processing latency, which strongly suggests a resource leak, saturation, or backlog in email-service. The next most useful evidence is application logs from email-service to look for queue buildup, worker/connection exhaustion, retries, timeouts, GC pressure, or SMTP failures that explain the progressive slowdown and help distinguish between backlog and leak/saturation causes."
+        },
+        {
+            "tool_name": "metrics",
+            "service": "checkout-service",
+            "evidence_ids": [],
+            "observations": [],
+            "reasoning": "Email-service metrics and logs already show rising memory pressure and latency, pointing strongly to a slowdown inside email handling. The remaining hypothesis is that checkout-service may be amplifying load via duplicate or retrying confirmation requests, so the most useful next evidence is checkout-service metrics to look for elevated request/retry rates, error spikes, or unusual email-trigger volume under sustained checkout traffic. This would help determine whether the email-service symptoms are caused by upstream overproduction versus an internal leak/saturation issue."
+        }
+    ],
+    "stop_reason": "duplicate_selection",
+    "stop_reasoning": "Email-service already shows clear signs of memory growth and rising processing latency, so the remaining high-value question is whether checkout-service is generating excess confirmation traffic via retries or duplicates. Checkout-service metrics can reveal spikes in request volume, retry/error rates, or abnormal email-trigger rates that would explain the overload on email-service and help distinguish upstream amplification from an internal email-service leak/saturation issue.",
+    "result": {
+        "incident_id": "INC-005",
+        "root_cause": "email-service experienced progressive resource saturation, most likely a memory leak or related memory-pressure issue, which caused email processing latency to rise over time and eventually led to failed confirmation email processing under sustained checkout traffic.",
+        "affected_service": "email-service",
+        "evidence_ids": [
+            "METRIC-005-01",
+            "METRIC-005-02",
+            "METRIC-005-03",
+            "METRIC-005-04",
+            "METRIC-005-05",
+            "LOG-005-01",
+            "LOG-005-02",
+            "LOG-005-03",
+            "LOG-005-04",
+            "LOG-005-05"
+        ],
+        "explanation": "The evidence shows email-service memory usage increasing steadily from 128 MiB to 782 MiB over the incident window, alongside worsening email processing latency, with p95 reaching 1840 ms. Logs follow the same pattern: initially successful processing, then elevated processing time, then warnings about memory pressure during confirmation email rendering, and finally a failed email processing event due to a memory allocation error. This supports the conclusion that email-service became progressively resource constrained under sustained load, likely due to a memory leak or similar saturation condition. A backlog/queue buildup may have contributed to the increasing latency, but the gathered evidence most strongly supports an internal resource pressure problem in email-service. The hypothesis that checkout-service amplified load via duplicate retries remains open and was not confirmed by the gathered evidence.",
+        "confidence": 0.95
+    },
+    "latency_ms": 15945.566875001532,
+    "input_tokens": 7551,
+    "output_tokens": 1129,
+    "llm_calls": 7,
+    "estimated_cost_usd": 0.01074375,
+    "timestamp": "2026-09-26T17:59:27.319468Z"
+}

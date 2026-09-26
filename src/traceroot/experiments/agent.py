@@ -8,9 +8,11 @@ from traceroot.agent.rca import generate_final_rca
 from traceroot.agent.state import InvestigationState
 from traceroot.agent.verification import verify_hypotheses
 from traceroot.domain.incident import Incident
+from traceroot.evaluation.efficiency import calculate_llm_cost
 from traceroot.experiments.models import AgentExperimentRecord
 from traceroot.experiments.persistence import save_agent_experiment_record
-from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI
+from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, LLM_PRICING
+from traceroot.llm.usage import LLMUsage
 
 
 def run_agent_experiment(
@@ -21,7 +23,12 @@ def run_agent_experiment(
 
     start = perf_counter()
 
-    hypotheses = generate_hypotheses(incident)
+    llm_usage = LLMUsage()
+
+    hypotheses = generate_hypotheses(
+        incident=incident,
+        llm_usage=llm_usage,
+    )
 
     investigation_state = InvestigationState(
         incident=incident,
@@ -29,15 +36,32 @@ def run_agent_experiment(
     )
 
     investigation_state = investigate(
-        state=investigation_state, max_tool_calls=max_tool_calls
+        state=investigation_state,
+        max_tool_calls=max_tool_calls,
+        llm_usage=llm_usage,
     )
 
-    investigation_state = verify_hypotheses(state=investigation_state)
+    investigation_state = verify_hypotheses(
+        state=investigation_state, llm_usage=llm_usage
+    )
 
-    final_state = generate_final_rca(state=investigation_state)
+    final_state = generate_final_rca(state=investigation_state, llm_usage=llm_usage)
 
     if final_state.final_result is None:
         raise RuntimeError("Agent investigation did not produce a final RCA.")
+
+    estimated_cost_usd = None
+    pricing = LLM_PRICING.get(LLM_MODEL_GPT_5_4_MINI)
+    if (
+        llm_usage.input_tokens is not None
+        and llm_usage.output_tokens is not None
+        and pricing is not None
+    ):
+        estimated_cost_usd = calculate_llm_cost(
+            input_tokens=llm_usage.input_tokens,
+            output_tokens=llm_usage.output_tokens,
+            **pricing,
+        )
 
     agent_experiment_record = AgentExperimentRecord(
         incident_id=incident.id,
@@ -50,6 +74,10 @@ def run_agent_experiment(
         model=LLM_MODEL_GPT_5_4_MINI,
         latency_ms=(perf_counter() - start) * 1000,
         timestamp=datetime.now(UTC),
+        input_tokens=llm_usage.input_tokens,
+        output_tokens=llm_usage.output_tokens,
+        llm_calls=llm_usage.llm_calls,
+        estimated_cost_usd=estimated_cost_usd,
     )
 
     save_agent_experiment_record(agent_experiment_record, output_path)

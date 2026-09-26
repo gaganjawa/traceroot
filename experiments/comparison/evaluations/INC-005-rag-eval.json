@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-005",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The expected root cause is a progressive memory leak in email-service from the emailMemoryLeak fault scenario that pads confirmation email bodies and increases memory over time. The actual output instead attributes the issue to saturation/slowdown in the asynchronous order-processing path, particularly order-worker dependence on inventory-service and queue backup, while explicitly saying no single failing component is confirmed. This does not match the same underlying issue or mechanism."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully aligned with the retrieval context."
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stayed fully focused on the incident cause with no irrelevant statements, so it directly addressed the input as well as possible."
+        }
+    ],
+    "execution": {
+        "latency_ms": 2856.2092920001305,
+        "input_tokens": 852,
+        "output_tokens": 233,
+        "total_tokens": 1085,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.0016875
+    }
+}

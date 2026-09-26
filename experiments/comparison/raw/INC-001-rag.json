@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-001",
+    "approach": "rag_baseline",
+    "model": "gpt-5.4-mini",
+    "top_k": 3,
+    "retrieved_knowledge": [
+        {
+            "chunk_id": "checkout-runbook.md::0",
+            "source": "checkout-runbook.md",
+            "score": 0.6908103454574196
+        },
+        {
+            "chunk_id": "architecture.md::0",
+            "source": "architecture.md",
+            "score": 0.4519553970153529
+        },
+        {
+            "chunk_id": "order-processing-runbook.md::0",
+            "source": "order-processing-runbook.md",
+            "score": 0.44910229034570137
+        }
+    ],
+    "result": {
+        "incident_id": "INC-001",
+        "root_cause": "Insufficient evidence to confirm a single root cause; the most likely cause from the available runbook guidance is checkout-service database connection pool saturation or waiters causing request blocking and timeouts.",
+        "affected_service": "checkout-service",
+        "evidence_ids": [],
+        "explanation": "The incident description points to elevated checkout latency and intermittent timeouts on the checkout API. The checkout runbook identifies saturated database connection pools, increasing waiters, and connection acquisition timeouts as common causes of exactly these symptoms. However, no metric data, deployment details, or dependency latency evidence was provided, so this remains a likely cause rather than a confirmed one. The architecture also notes that checkout failures can originate in synchronous dependencies, so the issue could be in checkout-service itself or one of its immediate dependencies, but the supplied information most strongly aligns with checkout-service database connection contention.",
+        "confidence": 0.54
+    },
+    "latency_ms": 3352.0187080030155,
+    "input_tokens": 843,
+    "output_tokens": 187,
+    "llm_calls": 1,
+    "estimated_cost_usd": 0.00147375,
+    "timestamp": "2026-09-26T17:56:04.645267Z"
+}

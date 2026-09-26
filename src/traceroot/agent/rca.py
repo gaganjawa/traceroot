@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from traceroot.agent.state import InvestigationState
 from traceroot.domain.rca import RCAResult
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
+from traceroot.llm.usage import LLMUsage, record_response_usage
 
 
 class GeneratedFinalRCA(BaseModel):
@@ -51,6 +52,7 @@ Tool calls and observations:
 
 def generate_final_rca(
     state: InvestigationState,
+    llm_usage: LLMUsage | None = None,
 ) -> InvestigationState:
     if not state.evidence_ids:
         raise ValueError("No evidence gathered for RCA generation.")
@@ -63,6 +65,11 @@ def generate_final_rca(
         model=LLM_MODEL_GPT_5_4_MINI,
         input=context,
         text_format=GeneratedFinalRCA,
+    )
+
+    record_response_usage(
+        llm_usage,
+        response,
     )
 
     generated = response.output_parsed

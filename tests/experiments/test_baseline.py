@@ -1,6 +1,8 @@
 import datetime
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from traceroot.domain.incident import Incident
 from traceroot.domain.rca import RCAResult
 from traceroot.experiments.baseline import run_baseline_experiment
@@ -258,3 +260,94 @@ def test_baseline_experiment_record_serializes_to_json(mock_run_rag):
 
     json_record = record.model_dump_json()
     assert isinstance(json_record, str)
+
+
+@patch("traceroot.experiments.baseline.run_rag_baseline")
+@patch("traceroot.experiments.baseline.LLM_MODEL_GPT_5_4_MINI", "gpt-5.4-mini")
+def test_run_baseline_experiment_persists_llm_usage(mock_run_rag):
+    mock_qdrant_client = MagicMock()
+    incident = Incident(
+        id="INC-123",
+        title="Test Incident",
+        description="This is a test incident.",
+        start_time=datetime.datetime(2024, 1, 1, 12, 0, tzinfo=datetime.UTC),
+    )
+    rca_result = RCAResult(
+        incident_id=incident.id,
+        root_cause="Test root cause",
+        affected_service="test-service",
+        evidence_ids=[],
+        explanation="Test explanation",
+        confidence=0.5,
+    )
+
+    def run_rag_side_effect(qdrant_client, incident, top_k, llm_usage):
+        llm_usage.add(input_tokens=100, output_tokens=20)
+        llm_usage.add(input_tokens=50, output_tokens=10)
+        return MagicMock(retrieval_results=[], result=rca_result)
+
+    mock_run_rag.side_effect = run_rag_side_effect
+
+    record = run_baseline_experiment(
+        qdrant_client=mock_qdrant_client,
+        incident=incident,
+        top_k=5,
+    )
+
+    assert record.input_tokens == 150
+    assert record.output_tokens == 30
+    assert record.llm_calls == 2
+    assert record.estimated_cost_usd == pytest.approx(0.0002475)
+    persisted_record = BaselineExperimentRecord.model_validate_json(
+        record.model_dump_json()
+    )
+    assert persisted_record == record
+    assert "total_tokens" not in record.model_dump()
+
+
+@patch("traceroot.experiments.baseline.run_rag_baseline")
+@pytest.mark.parametrize(
+    "input_tokens, output_tokens",
+    [(None, None), (None, 20), (100, None)],
+)
+def test_run_baseline_experiment_preserves_unavailable_llm_usage(
+    mock_run_rag,
+    input_tokens,
+    output_tokens,
+):
+    mock_qdrant_client = MagicMock()
+    incident = Incident(
+        id="INC-123",
+        title="Test Incident",
+        description="This is a test incident.",
+        start_time=datetime.datetime(2024, 1, 1, 12, 0, tzinfo=datetime.UTC),
+    )
+    rca_result = RCAResult(
+        incident_id=incident.id,
+        root_cause="Test root cause",
+        affected_service="test-service",
+        evidence_ids=[],
+        explanation="Test explanation",
+        confidence=0.5,
+    )
+
+    def run_rag_side_effect(qdrant_client, incident, top_k, llm_usage):
+        llm_usage.add(input_tokens=input_tokens, output_tokens=output_tokens)
+        return MagicMock(retrieval_results=[], result=rca_result)
+
+    mock_run_rag.side_effect = run_rag_side_effect
+
+    record = run_baseline_experiment(
+        qdrant_client=mock_qdrant_client,
+        incident=incident,
+        top_k=5,
+    )
+
+    assert record.input_tokens == input_tokens
+    assert record.output_tokens == output_tokens
+    assert record.llm_calls == 1
+    assert record.estimated_cost_usd is None
+    persisted_record = BaselineExperimentRecord.model_validate_json(
+        record.model_dump_json()
+    )
+    assert persisted_record == record

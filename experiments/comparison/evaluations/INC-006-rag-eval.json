@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-006",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.2019353670841187,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies a broad checkout-side post-payment/cart-clearing or state-persistence issue, but it does not match the Expected Output’s specific root cause: a cartFailure fault causing some EmptyCart operations to be routed to a failing cart store. While both mention carts not being cleared after successful checkout, the Actual Output misses the key mechanism and service-level fault described in the Expected Output."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output is fully consistent with the retrieval context. Great job!"
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response fully addresses the question about what caused incident INC-006 and contains no irrelevant statements. It’s maximally relevant and concise."
+        }
+    ],
+    "execution": {
+        "latency_ms": 2991.931290998764,
+        "input_tokens": 850,
+        "output_tokens": 228,
+        "total_tokens": 1078,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.0016635
+    }
+}

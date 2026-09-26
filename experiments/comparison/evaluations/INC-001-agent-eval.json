@@ -1,0 +1,79 @@
+{
+    "incident_id": "INC-001",
+    "approach": "agent",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.8622459331201855,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The actual output identifies the same underlying issue as the expected output: checkout-service slowdown/timeouts caused by database connection acquisition delays and connection contention. This is semantically aligned with the expected root cause of a reduced database connection pool max size leading to contention and request timeouts. However, it omits the specific configuration change from 100 to 20, so it captures the mechanism and impact but not the precise stated cause."
+        },
+        {
+            "name": "Evidence Precision",
+            "score": 0.6666666666666666,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+        },
+        {
+            "name": "Evidence Recall",
+            "score": 0.8,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully consistent with the retrieval context."
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stayed fully focused on the incident question and did not include any irrelevant statements. It fully addressed the input, so there is no basis for a higher relevancy score."
+        },
+        {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "4 unique tool/service selections across 4 tool calls."
+        },
+        {
+            "name": "Empty Tool Rate",
+            "score": 0.5,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "2 empty-result tool calls across 4 total tool calls."
+        },
+        {
+            "name": "Evidence Coverage",
+            "score": 0.8,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "4 relevant evidence items gathered out of 5 expected supporting evidence items."
+        },
+        {
+            "name": "Stop Quality",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: consecutive_empty_results."
+        }
+    ],
+    "execution": {
+        "latency_ms": 14583.957457998622,
+        "input_tokens": 6612,
+        "output_tokens": 990,
+        "total_tokens": 7602,
+        "llm_calls": 7,
+        "tool_calls": 4,
+        "investigation_steps": 4,
+        "estimated_cost_usd": 0.009413999999999999
+    }
+}

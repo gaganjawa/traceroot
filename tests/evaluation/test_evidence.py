@@ -10,47 +10,73 @@ def test_evidence_precision_recall_perfect_match():
     precision, recall = evaluate_evidence_precision_recall(result, ground_truth)
 
     assert precision.score == 1.0
+    assert precision.passed is True
     assert recall.score == 1.0
+    assert recall.passed is True
 
 
 def test_evidence_precision_with_extra_evidence():
     result = MagicMock(evidence_ids=["E1", "E2", "E3"])
     ground_truth = MagicMock(supporting_evidence_ids=["E1", "E2"])
 
-    precision, recall = evaluate_evidence_precision_recall(result, ground_truth)
+    precision, recall = evaluate_evidence_precision_recall(
+        result,
+        ground_truth,
+    )
 
     assert precision.score == 2 / 3
+    assert precision.passed is True
+
     assert recall.score == 1.0
+    assert recall.passed is True
 
 
 def test_evidence_recall_with_missing_evidence():
     result = MagicMock(evidence_ids=["E1"])
     ground_truth = MagicMock(supporting_evidence_ids=["E1", "E2"])
 
-    precision, recall = evaluate_evidence_precision_recall(result, ground_truth)
+    precision, recall = evaluate_evidence_precision_recall(
+        result,
+        ground_truth,
+    )
 
     assert precision.score == 1.0
+    assert precision.passed is True
+
     assert recall.score == 0.5
+    assert recall.passed is True
 
 
 def test_evidence_precision_recall_no_overlap():
     result = MagicMock(evidence_ids=["E1"])
     ground_truth = MagicMock(supporting_evidence_ids=["E2"])
 
-    precision, recall = evaluate_evidence_precision_recall(result, ground_truth)
+    precision, recall = evaluate_evidence_precision_recall(
+        result,
+        ground_truth,
+    )
 
     assert precision.score == 0.0
+    assert precision.passed is False
+
     assert recall.score == 0.0
+    assert recall.passed is False
 
 
 def test_evidence_precision_handles_empty_prediction():
     result = MagicMock(evidence_ids=[])
     ground_truth = MagicMock(supporting_evidence_ids=["E1"])
 
-    precision, recall = evaluate_evidence_precision_recall(result, ground_truth)
+    precision, recall = evaluate_evidence_precision_recall(
+        result,
+        ground_truth,
+    )
 
     assert precision.score == 0.0
+    assert precision.passed is False
+
     assert recall.score == 0.0
+    assert recall.passed is False
 
 
 def test_evidence_metrics_ignore_duplicate_ids():
@@ -60,4 +86,22 @@ def test_evidence_metrics_ignore_duplicate_ids():
     precision, recall = evaluate_evidence_precision_recall(result, ground_truth)
 
     assert precision.score == 1.0
+    assert precision.passed is True
     assert recall.score == 1.0
+    assert recall.passed is True
+
+
+def test_evidence_precision_below_threshold_fails():
+    result = MagicMock(evidence_ids=["E1", "E3", "E4"])
+    ground_truth = MagicMock(supporting_evidence_ids=["E1", "E2"])
+
+    precision, recall = evaluate_evidence_precision_recall(
+        result,
+        ground_truth,
+    )
+
+    assert precision.score == 1 / 3
+    assert precision.passed is False
+
+    assert recall.score == 0.5
+    assert recall.passed is True

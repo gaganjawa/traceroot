@@ -2,6 +2,9 @@ from traceroot.domain.ground_truth import GroundTruth
 from traceroot.domain.rca import RCAResult
 from traceroot.evaluation.schemas import EvaluatorType, MetricResult
 
+PRECISION_THRESHOLD = 0.5
+RECALL_THRESHOLD = 0.5
+
 
 def evaluate_evidence_precision_recall(
     result: RCAResult,
@@ -19,7 +22,7 @@ def evaluate_evidence_precision_recall(
     precision_result = MetricResult(
         name="Evidence Precision",
         score=precision,
-        passed=True,
+        passed=precision >= PRECISION_THRESHOLD,
         evaluator_type=EvaluatorType.DETERMINISTIC,
         reason="Fraction of cited evidence that is relevant.",
     )
@@ -27,7 +30,7 @@ def evaluate_evidence_precision_recall(
     recall_result = MetricResult(
         name="Evidence Recall",
         score=recall,
-        passed=True,
+        passed=recall >= RECALL_THRESHOLD,
         evaluator_type=EvaluatorType.DETERMINISTIC,
         reason="Fraction of relevant evidence that was cited.",
     )

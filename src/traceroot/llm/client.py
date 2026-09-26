@@ -11,6 +11,16 @@ LLM_MODEL_GPT_5_4_MINI = os.getenv(
 )
 
 
+# USD per 1M tokens, from the OpenAI GPT-5.4 Mini model pricing documentation.
+# Aggregate input usage is charged at the standard input rate.
+LLM_PRICING = {
+    "gpt-5.4-mini": {
+        "input_cost_per_million": 0.75,
+        "output_cost_per_million": 4.50,
+    },
+}
+
+
 def get_llm_client() -> OpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
 

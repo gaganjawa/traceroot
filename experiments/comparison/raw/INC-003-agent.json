@@ -1,0 +1,116 @@
+{
+    "incident_id": "INC-003",
+    "approach": "agent",
+    "model": "gpt-5.4-mini",
+    "hypotheses": [
+        {
+            "description": "The asynchronous order-processing worker pool may be underprovisioned or saturated, causing jobs to queue faster than they are consumed and increasing confirmation latency.",
+            "status": "rejected"
+        },
+        {
+            "description": "The order-processing queue may be experiencing a downstream dependency slowdown or repeated retries, so messages remain in-flight longer and the backlog grows despite orders being accepted.",
+            "status": "supported"
+        },
+        {
+            "description": "A scheduling or consumer-liveness issue may be preventing some order-processing workers from polling the queue or acknowledging tasks, reducing effective throughput and delaying confirmations.",
+            "status": "rejected"
+        }
+    ],
+    "evidence_ids": [
+        "METRIC-003-01",
+        "METRIC-003-02",
+        "METRIC-003-03",
+        "LOG-003-01",
+        "LOG-003-02",
+        "LOG-003-03",
+        "LOG-003-04",
+        "LOG-003-05",
+        "LOG-003-06",
+        "LOG-003-07",
+        "LOG-003-08",
+        "LOG-003-09",
+        "LOG-003-10"
+    ],
+    "tool_history": [
+        {
+            "tool_name": "metrics",
+            "service": null,
+            "evidence_ids": [
+                "METRIC-003-01",
+                "METRIC-003-02",
+                "METRIC-003-03"
+            ],
+            "observations": [
+                "id='METRIC-003-01' timestamp=datetime.datetime(2026, 9, 22, 11, 1, tzinfo=TzInfo(0)) service='order-worker' metric='order_processing_queue_depth' value=1842.0 unit='count'",
+                "id='METRIC-003-02' timestamp=datetime.datetime(2026, 9, 22, 11, 1, tzinfo=TzInfo(0)) service='inventory-service' metric='http_request_duration_p95' value=5200.0 unit='ms'",
+                "id='METRIC-003-03' timestamp=datetime.datetime(2026, 9, 22, 11, 1, tzinfo=TzInfo(0)) service='order-worker' metric='cpu_utilization' value=31.0 unit='percent'"
+            ],
+            "reasoning": "The incident is a growing processing backlog with delayed confirmations. Metrics across all services are the fastest way to determine whether throughput is constrained, queue depth is rising, workers are unhealthy/saturated, or downstream latency/retry behavior is causing accumulation. This should help discriminate among underprovisioning, dependency slowdown, and consumer-liveness issues before drilling into logs or deployments."
+        },
+        {
+            "tool_name": "logs",
+            "service": "order-worker",
+            "evidence_ids": [
+                "LOG-003-01",
+                "LOG-003-02",
+                "LOG-003-03",
+                "LOG-003-04",
+                "LOG-003-05",
+                "LOG-003-06",
+                "LOG-003-07",
+                "LOG-003-08",
+                "LOG-003-09",
+                "LOG-003-10"
+            ],
+            "observations": [
+                "id='LOG-003-01' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 4, tzinfo=TzInfo(0)) service='order-worker' level='INFO' message='Order ORD-28491 received for asynchronous processing'",
+                "id='LOG-003-02' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 9, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'",
+                "id='LOG-003-03' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 10, tzinfo=TzInfo(0)) service='order-worker' level='WARN' message='Retrying inventory reservation after downstream timeout'",
+                "id='LOG-003-04' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 15, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'",
+                "id='LOG-003-05' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 16, tzinfo=TzInfo(0)) service='order-worker' level='WARN' message='Retrying inventory reservation after downstream timeout'",
+                "id='LOG-003-06' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 21, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'",
+                "id='LOG-003-07' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 22, tzinfo=TzInfo(0)) service='order-worker' level='WARN' message='Retrying inventory reservation after downstream timeout'",
+                "id='LOG-003-08' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 27, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'",
+                "id='LOG-003-09' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 28, tzinfo=TzInfo(0)) service='order-worker' level='WARN' message='Retrying inventory reservation after downstream timeout'",
+                "id='LOG-003-10' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 33, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'"
+            ],
+            "reasoning": "Queue depth is high while worker CPU is not saturated, and inventory latency suggests possible downstream or retry-related delays. The most useful next evidence is order-worker logs to see whether consumers are polling, acknowledging, retrying, or erroring, which can distinguish consumer-liveness problems from dependency slowdown or repeated retries. This service/tool combination has not been used yet."
+        },
+        {
+            "tool_name": "deployments",
+            "service": "inventory-service",
+            "evidence_ids": [],
+            "observations": [],
+            "reasoning": "The logs and metrics strongly indicate downstream inventory reservation timeouts and retries as the immediate cause of the growing backlog. The next most useful evidence is whether a recent deployment or rollout to inventory-service introduced the latency regression, which would validate or rule out a change-induced dependency slowdown. This tool/service combination has not been used yet and could explain the timing of the incident more directly than additional generic metrics or logs."
+        }
+    ],
+    "stop_reason": "duplicate_selection",
+    "stop_reasoning": "Current evidence already points to downstream inventory reservation timeouts and retries as the likely source of backlog growth. The most useful next step is to check whether inventory-service had a recent deployment or rollout that aligns with the incident start, which could confirm a change-induced latency regression. This tool/service combination has not been used yet and is more discriminating than additional general metrics or logs at this point.",
+    "result": {
+        "incident_id": "INC-003",
+        "root_cause": "The order-processing backlog was caused by repeated downstream timeouts in the inventory reservation call, which kept order-worker jobs in-flight longer and triggered retries, slowing completion and increasing queue depth.",
+        "affected_service": "order-worker",
+        "evidence_ids": [
+            "METRIC-003-01",
+            "METRIC-003-02",
+            "METRIC-003-03",
+            "LOG-003-02",
+            "LOG-003-03",
+            "LOG-003-04",
+            "LOG-003-05",
+            "LOG-003-06",
+            "LOG-003-07",
+            "LOG-003-08",
+            "LOG-003-09",
+            "LOG-003-10"
+        ],
+        "explanation": "Evidence shows the order-processing queue was already heavily backed up while the order-worker was not CPU-saturated, making worker underprovisioning less likely. At the same time, inventory-service latency was high and order-worker logs repeatedly show inventory reservation requests timing out after 5000ms followed by retry attempts. This matches the supported hypothesis that a downstream dependency slowdown and repeated retries were prolonging message handling, causing the backlog and delayed confirmations. There is no evidence that consumer polling or acknowledgment was failing.",
+        "confidence": 0.97
+    },
+    "latency_ms": 14607.529625001916,
+    "input_tokens": 8216,
+    "output_tokens": 1030,
+    "llm_calls": 7,
+    "estimated_cost_usd": 0.010797,
+    "timestamp": "2026-09-26T17:57:47.784426Z"
+}

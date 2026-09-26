@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-004",
+    "approach": "rag_baseline",
+    "model": "gpt-5.4-mini",
+    "top_k": 3,
+    "retrieved_knowledge": [
+        {
+            "chunk_id": "checkout-runbook.md::0",
+            "source": "checkout-runbook.md",
+            "score": 0.3975525613102604
+        },
+        {
+            "chunk_id": "architecture.md::0",
+            "source": "architecture.md",
+            "score": 0.37034178604717416
+        },
+        {
+            "chunk_id": "payment-runbook.md::0",
+            "source": "payment-runbook.md",
+            "score": 0.3654728724746927
+        }
+    ],
+    "result": {
+        "incident_id": "INC-004",
+        "root_cause": "Insufficient evidence to confirm a specific root cause; the incident most likely stems from a localized issue in the GetAds/contextual-ad retrieval path rather than core checkout or browsing services.",
+        "affected_service": "GetAds / contextual ad retrieval service",
+        "evidence_ids": [],
+        "explanation": "The only supplied evidence describes intermittent failures in GetAds requests while most requests succeed and core checkout/browsing remain healthy. None of the retrieved engineering knowledge covers ads retrieval, so there is no service-specific signal to attribute the failures to a particular dependency, deployment, or configuration change. Based on the symptom localization, the issue appears confined to the ad retrieval path and not to the broader commerce platform flows. Because the available information does not include logs, metrics, error codes, or recent changes for the ads service, the exact root cause cannot be established from the provided material.",
+        "confidence": 0.18
+    },
+    "latency_ms": 2975.7381659983366,
+    "input_tokens": 880,
+    "output_tokens": 184,
+    "llm_calls": 1,
+    "estimated_cost_usd": 0.001488,
+    "timestamp": "2026-09-26T17:58:20.220657Z"
+}

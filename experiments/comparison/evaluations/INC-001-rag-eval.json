@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-001",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.7622459331201854,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same general underlying issue as the Expected Output: checkout-service database connection pool problems leading to blocking/contention and request timeouts. This preserves the mechanism of connection pool saturation/contention causing checkout timeouts. However, it misses the specific root cause in the Expected Output that the pool maximum was reduced from 100 to 20, and instead frames it as uncertain with only a likely cause, so it is only a partial semantic match."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully faithful to the retrieval context."
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stayed fully focused on the incident cause with no irrelevant statements, so it appropriately deserves the highest score."
+        }
+    ],
+    "execution": {
+        "latency_ms": 3352.0187080030155,
+        "input_tokens": 843,
+        "output_tokens": 187,
+        "total_tokens": 1030,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.00147375
+    }
+}

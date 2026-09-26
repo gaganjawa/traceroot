@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from traceroot.agent.state import Hypothesis
 from traceroot.domain.incident import Incident
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
+from traceroot.llm.usage import LLMUsage, record_response_usage
 
 
 class GeneratedHypotheses(BaseModel):
@@ -17,7 +18,9 @@ def build_prompt(
 
 
 def generate_hypothesis_from_llm(
-    incident: Incident, max_hypotheses: int = 3
+    incident: Incident,
+    max_hypotheses: int,
+    llm_usage: LLMUsage | None = None,
 ) -> list[Hypothesis]:
     prompt = f"""
     You are investigating a production software incident.
@@ -48,6 +51,11 @@ def generate_hypothesis_from_llm(
         text_format=GeneratedHypotheses,
     )
 
+    record_response_usage(
+        llm_usage=llm_usage,
+        response=response,
+    )
+
     generated = response.output_parsed
 
     if generated is None:
@@ -61,11 +69,16 @@ def generate_hypothesis_from_llm(
 def generate_hypotheses(
     incident: Incident,
     max_hypotheses: int = 3,
+    llm_usage: LLMUsage | None = None,
 ) -> list[Hypothesis]:
 
     if max_hypotheses <= 0:
         raise ValueError("max_hypotheses must be > 0")
 
-    hypotheses = generate_hypothesis_from_llm(incident, max_hypotheses)
+    hypotheses = generate_hypothesis_from_llm(
+        incident,
+        max_hypotheses,
+        llm_usage=llm_usage,
+    )
 
     return hypotheses

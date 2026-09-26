@@ -1,0 +1,79 @@
+{
+    "incident_id": "INC-004",
+    "approach": "agent",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.2559136633719193,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output matches the broad symptom in the Expected Output by identifying intermittent failures in the ad-service GetAds path affecting only some requests. However, it does not identify the specific root cause required by the Expected Output—the enabled adFailure fault scenario—and instead says the trigger is inconclusive among several possibilities. Because the underlying cause is left unresolved, the outputs are not semantically equivalent on root cause."
+        },
+        {
+            "name": "Evidence Precision",
+            "score": 0.23076923076923078,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+        },
+        {
+            "name": "Evidence Recall",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions; the actual output aligns perfectly with the retrieval context."
+        },
+        {
+            "name": "Relevancy",
+            "score": 0.8333333333333334,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 0.83 because the response is mostly relevant and addresses the incident, but it loses some relevance by describing outcomes instead of directly explaining what caused incident INC-004. It is still fairly high because it stays on topic overall and only misses that key causal detail."
+        },
+        {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "5 unique tool/service selections across 5 tool calls."
+        },
+        {
+            "name": "Empty Tool Rate",
+            "score": 0.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "0 empty-result tool calls across 5 total tool calls."
+        },
+        {
+            "name": "Evidence Coverage",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "3 relevant evidence items gathered out of 3 expected supporting evidence items."
+        },
+        {
+            "name": "Stop Quality",
+            "score": 0.5,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: duplicate_selection."
+        }
+    ],
+    "execution": {
+        "latency_ms": 18659.81275000013,
+        "input_tokens": 13875,
+        "output_tokens": 1318,
+        "total_tokens": 15193,
+        "llm_calls": 9,
+        "tool_calls": 5,
+        "investigation_steps": 5,
+        "estimated_cost_usd": 0.01633725
+    }
+}

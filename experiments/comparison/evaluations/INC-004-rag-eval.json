@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-004",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.6936924280277945,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same general issue area as the Expected Output by pointing to a localized problem in the GetAds/contextual-ad retrieval path, which is semantically close to intermittent GetAds failures in the ad service. However, it misses the specific mechanism and cause stated in the Expected Output: the enabled adFailure fault scenario. Because it captures the service/path involved but not the precise fault-induced root cause, alignment is only partial."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 0.6666666666666666,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 0.67 because the actual output claims a localized GetAds/contextual-ad retrieval root cause, but the retrieval context is only about checkout service latency and payment authorization runbooks, so that specific root cause is unsupported by the provided scope."
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response fully addressed the question with no irrelevant content, so it cannot reasonably be higher. Great job staying completely on topic."
+        }
+    ],
+    "execution": {
+        "latency_ms": 2975.7381659983366,
+        "input_tokens": 880,
+        "output_tokens": 184,
+        "total_tokens": 1064,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.001488
+    }
+}

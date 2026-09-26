@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-002",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.20373268873441294,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The Expected Output identifies a specific root cause: a payment-service v3.7.0 request-mapping change that incorrectly serialized the currency field, leading to provider rejection of authorization requests. The Actual Output only states there is insufficient evidence and vaguely points to payment-service or the external provider during authorization, mentioning possible provider validation/rejection. While it overlaps on the authorization rejection domain, it misses the concrete serialization bug and versioned request-mapping change, so the root cause does not semantically match."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions; the actual output appears fully consistent with the retrieval context. Great job!"
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response is fully relevant to the question, with no irrelevant statements, and directly addresses the cause of incident INC-002."
+        }
+    ],
+    "execution": {
+        "latency_ms": 3386.9920420002018,
+        "input_tokens": 870,
+        "output_tokens": 206,
+        "total_tokens": 1076,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.0015795
+    }
+}

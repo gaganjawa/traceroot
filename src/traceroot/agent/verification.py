@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 from traceroot.agent.state import Hypothesis, HypothesisStatus, InvestigationState
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
+from traceroot.llm.usage import LLMUsage, record_response_usage
 
 
 class HypothesisAssessment(BaseModel):
@@ -44,6 +45,7 @@ def build_prompt_for_verification(
 
 def verify_hypotheses(
     state: InvestigationState,
+    llm_usage: LLMUsage | None = None,
 ) -> InvestigationState:
 
     prompt = build_prompt_for_verification(
@@ -56,6 +58,11 @@ def verify_hypotheses(
         model=LLM_MODEL_GPT_5_4_MINI,
         input=prompt,
         text_format=HypothesisAssessments,
+    )
+
+    record_response_usage(
+        llm_usage=llm_usage,
+        response=response,
     )
 
     generated = response.output_parsed

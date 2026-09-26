@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-005",
+    "approach": "rag_baseline",
+    "model": "gpt-5.4-mini",
+    "top_k": 3,
+    "retrieved_knowledge": [
+        {
+            "chunk_id": "checkout-runbook.md::0",
+            "source": "checkout-runbook.md",
+            "score": 0.6112514520833513
+        },
+        {
+            "chunk_id": "order-processing-runbook.md::0",
+            "source": "order-processing-runbook.md",
+            "score": 0.5486117011113123
+        },
+        {
+            "chunk_id": "architecture.md::0",
+            "source": "architecture.md",
+            "score": 0.499470669278177
+        }
+    ],
+    "result": {
+        "incident_id": "INC-005",
+        "root_cause": "Most likely saturation or slowdown in the asynchronous order-processing path, especially the order-worker’s downstream dependency on inventory-service, causing the order queue to back up and delaying downstream notifications. The supplied information does not prove a single confirmed failing component.",
+        "affected_service": "order-worker / order-processing path (possibly inventory-service dependency)",
+        "evidence_ids": [],
+        "explanation": "The incident description says checkout completes successfully, but order confirmation emails become progressively delayed and some requests eventually fail after sustained traffic. The architecture shows that successful checkout publishes orders to an asynchronous path: checkout-service → order queue → order-worker → inventory-service → notification-service. The order-processing runbook specifically links increasing delay and backlog to queue depth, worker throughput, downstream dependency latency, and retries. It also notes that high dependency latency can reduce worker throughput even when worker CPU looks normal, which matches the symptom of progressive slowdown under sustained load. Because no metrics, logs, or deployment evidence are provided, this cannot be confirmed as a definitive root cause; it is the most plausible explanation based on the supplied runbooks.",
+        "confidence": 0.72
+    },
+    "latency_ms": 2856.2092920001305,
+    "input_tokens": 852,
+    "output_tokens": 233,
+    "llm_calls": 1,
+    "estimated_cost_usd": 0.0016875,
+    "timestamp": "2026-09-26T17:59:11.371859Z"
+}

@@ -1,0 +1,731 @@
+{
+  "configuration": {
+    "incident_ids": [
+      "INC-001",
+      "INC-002",
+      "INC-003",
+      "INC-004",
+      "INC-005",
+      "INC-006"
+    ],
+    "top_k": 3,
+    "max_tool_calls": 6
+  },
+  "results": [
+    {
+      "incident_id": "INC-001",
+      "rag": {
+        "incident_id": "INC-001",
+        "approach": "rag_baseline",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.7622459331201854,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same general underlying issue as the Expected Output: checkout-service database connection pool problems leading to blocking/contention and request timeouts. This preserves the mechanism of connection pool saturation/contention causing checkout timeouts. However, it misses the specific root cause in the Expected Output that the pool maximum was reduced from 100 to 20, and instead frames it as uncertain with only a likely cause, so it is only a partial semantic match."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully faithful to the retrieval context."
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stayed fully focused on the incident cause with no irrelevant statements, so it appropriately deserves the highest score."
+          }
+        ],
+        "execution": {
+          "latency_ms": 3352.0187080030155,
+          "input_tokens": 843,
+          "output_tokens": 187,
+          "total_tokens": 1030,
+          "llm_calls": 1,
+          "tool_calls": 0,
+          "investigation_steps": null,
+          "estimated_cost_usd": 0.00147375
+        }
+      },
+      "agent": {
+        "incident_id": "INC-001",
+        "approach": "agent",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.8622459331201855,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The actual output identifies the same underlying issue as the expected output: checkout-service slowdown/timeouts caused by database connection acquisition delays and connection contention. This is semantically aligned with the expected root cause of a reduced database connection pool max size leading to contention and request timeouts. However, it omits the specific configuration change from 100 to 20, so it captures the mechanism and impact but not the precise stated cause."
+          },
+          {
+            "name": "Evidence Precision",
+            "score": 0.6666666666666666,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+          },
+          {
+            "name": "Evidence Recall",
+            "score": 0.8,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully consistent with the retrieval context."
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stayed fully focused on the incident question and did not include any irrelevant statements. It fully addressed the input, so there is no basis for a higher relevancy score."
+          },
+          {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "4 unique tool/service selections across 4 tool calls."
+          },
+          {
+            "name": "Empty Tool Rate",
+            "score": 0.5,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "2 empty-result tool calls across 4 total tool calls."
+          },
+          {
+            "name": "Evidence Coverage",
+            "score": 0.8,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "4 relevant evidence items gathered out of 5 expected supporting evidence items."
+          },
+          {
+            "name": "Stop Quality",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: consecutive_empty_results."
+          }
+        ],
+        "execution": {
+          "latency_ms": 14583.957457998622,
+          "input_tokens": 6612,
+          "output_tokens": 990,
+          "total_tokens": 7602,
+          "llm_calls": 7,
+          "tool_calls": 4,
+          "investigation_steps": 4,
+          "estimated_cost_usd": 0.009413999999999999
+        }
+      }
+    },
+    {
+      "incident_id": "INC-002",
+      "rag": {
+        "incident_id": "INC-002",
+        "approach": "rag_baseline",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.20373268873441294,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The Expected Output identifies a specific root cause: a payment-service v3.7.0 request-mapping change that incorrectly serialized the currency field, leading to provider rejection of authorization requests. The Actual Output only states there is insufficient evidence and vaguely points to payment-service or the external provider during authorization, mentioning possible provider validation/rejection. While it overlaps on the authorization rejection domain, it misses the concrete serialization bug and versioned request-mapping change, so the root cause does not semantically match."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions; the actual output appears fully consistent with the retrieval context. Great job!"
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response is fully relevant to the question, with no irrelevant statements, and directly addresses the cause of incident INC-002."
+          }
+        ],
+        "execution": {
+          "latency_ms": 3386.9920420002018,
+          "input_tokens": 870,
+          "output_tokens": 206,
+          "total_tokens": 1076,
+          "llm_calls": 1,
+          "tool_calls": 0,
+          "investigation_steps": null,
+          "estimated_cost_usd": 0.0015795
+        }
+      },
+      "agent": {
+        "incident_id": "INC-002",
+        "approach": "agent",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.7,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the core issue as payment authorization requests being rejected due to validation errors from malformed or incorrect authorization payloads/parameters, which is broadly aligned with the Expected Output\u2019s root cause of an incorrect request-mapping serialization of the currency field. It captures the same general mechanism\u2014badly formed authorization requests causing provider rejection\u2014but misses the specific root cause details that the v3.7.0 payment-service mapping change serialized the currency field incorrectly."
+          },
+          {
+            "name": "Evidence Precision",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+          },
+          {
+            "name": "Evidence Recall",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions; the actual output aligns perfectly with the retrieval context. Great job!"
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response is fully relevant to the question and contains no irrelevant statements, so it directly addresses the incident cause as requested."
+          },
+          {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "3 unique tool/service selections across 3 tool calls."
+          },
+          {
+            "name": "Empty Tool Rate",
+            "score": 0.6666666666666666,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "2 empty-result tool calls across 3 total tool calls."
+          },
+          {
+            "name": "Evidence Coverage",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "0 relevant evidence items gathered out of 5 expected supporting evidence items."
+          },
+          {
+            "name": "Stop Quality",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: consecutive_empty_results."
+          }
+        ],
+        "execution": {
+          "latency_ms": 11518.057500001305,
+          "input_tokens": 4247,
+          "output_tokens": 882,
+          "total_tokens": 5129,
+          "llm_calls": 6,
+          "tool_calls": 3,
+          "investigation_steps": 3,
+          "estimated_cost_usd": 0.00715425
+        }
+      }
+    },
+    {
+      "incident_id": "INC-003",
+      "rag": {
+        "incident_id": "INC-003",
+        "approach": "rag_baseline",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same underlying root cause as the Expected Output: inventory-service request timeouts/latency in the order-worker\u2019s downstream dependency leading to retries and degraded async order processing. It preserves the key causal chain from the test case parameters\u2014inventory-service issues causing order-worker retries and backlog/reduced throughput\u2014even though it uses softer wording and mentions latency alongside timeouts."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully aligned with the retrieval context. Great job!"
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response was fully relevant to the question about what caused incident INC-003, with no irrelevant statements included. Great job staying focused and directly addressing the prompt."
+          }
+        ],
+        "execution": {
+          "latency_ms": 3508.163541999238,
+          "input_tokens": 844,
+          "output_tokens": 214,
+          "total_tokens": 1058,
+          "llm_calls": 1,
+          "tool_calls": 0,
+          "investigation_steps": null,
+          "estimated_cost_usd": 0.001596
+        }
+      },
+      "agent": {
+        "incident_id": "INC-003",
+        "approach": "agent",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same root cause as the Expected Output: inventory/inventory-service request timeouts leading to order-worker retries and a growing order-processing backlog. It matches the underlying mechanism as well, adding consistent detail about jobs staying in-flight longer and queue depth increasing without changing the core cause."
+          },
+          {
+            "name": "Evidence Precision",
+            "score": 0.3333333333333333,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+          },
+          {
+            "name": "Evidence Recall",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully aligned with the retrieval context."
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response is fully relevant to the question and there are no irrelevant statements; it directly addresses what caused incident INC-003."
+          },
+          {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "3 unique tool/service selections across 3 tool calls."
+          },
+          {
+            "name": "Empty Tool Rate",
+            "score": 0.3333333333333333,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "1 empty-result tool calls across 3 total tool calls."
+          },
+          {
+            "name": "Evidence Coverage",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "4 relevant evidence items gathered out of 4 expected supporting evidence items."
+          },
+          {
+            "name": "Stop Quality",
+            "score": 0.5,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: duplicate_selection."
+          }
+        ],
+        "execution": {
+          "latency_ms": 14607.529625001916,
+          "input_tokens": 8216,
+          "output_tokens": 1030,
+          "total_tokens": 9246,
+          "llm_calls": 7,
+          "tool_calls": 3,
+          "investigation_steps": 3,
+          "estimated_cost_usd": 0.010797
+        }
+      }
+    },
+    {
+      "incident_id": "INC-004",
+      "rag": {
+        "incident_id": "INC-004",
+        "approach": "rag_baseline",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.6936924280277945,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same general issue area as the Expected Output by pointing to a localized problem in the GetAds/contextual-ad retrieval path, which is semantically close to intermittent GetAds failures in the ad service. However, it misses the specific mechanism and cause stated in the Expected Output: the enabled adFailure fault scenario. Because it captures the service/path involved but not the precise fault-induced root cause, alignment is only partial."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 0.6666666666666666,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 0.67 because the actual output claims a localized GetAds/contextual-ad retrieval root cause, but the retrieval context is only about checkout service latency and payment authorization runbooks, so that specific root cause is unsupported by the provided scope."
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response fully addressed the question with no irrelevant content, so it cannot reasonably be higher. Great job staying completely on topic."
+          }
+        ],
+        "execution": {
+          "latency_ms": 2975.7381659983366,
+          "input_tokens": 880,
+          "output_tokens": 184,
+          "total_tokens": 1064,
+          "llm_calls": 1,
+          "tool_calls": 0,
+          "investigation_steps": null,
+          "estimated_cost_usd": 0.001488
+        }
+      },
+      "agent": {
+        "incident_id": "INC-004",
+        "approach": "agent",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.2559136633719193,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output matches the broad symptom in the Expected Output by identifying intermittent failures in the ad-service GetAds path affecting only some requests. However, it does not identify the specific root cause required by the Expected Output\u2014the enabled adFailure fault scenario\u2014and instead says the trigger is inconclusive among several possibilities. Because the underlying cause is left unresolved, the outputs are not semantically equivalent on root cause."
+          },
+          {
+            "name": "Evidence Precision",
+            "score": 0.23076923076923078,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+          },
+          {
+            "name": "Evidence Recall",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions; the actual output aligns perfectly with the retrieval context."
+          },
+          {
+            "name": "Relevancy",
+            "score": 0.8333333333333334,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 0.83 because the response is mostly relevant and addresses the incident, but it loses some relevance by describing outcomes instead of directly explaining what caused incident INC-004. It is still fairly high because it stays on topic overall and only misses that key causal detail."
+          },
+          {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "5 unique tool/service selections across 5 tool calls."
+          },
+          {
+            "name": "Empty Tool Rate",
+            "score": 0.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "0 empty-result tool calls across 5 total tool calls."
+          },
+          {
+            "name": "Evidence Coverage",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "3 relevant evidence items gathered out of 3 expected supporting evidence items."
+          },
+          {
+            "name": "Stop Quality",
+            "score": 0.5,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: duplicate_selection."
+          }
+        ],
+        "execution": {
+          "latency_ms": 18659.81275000013,
+          "input_tokens": 13875,
+          "output_tokens": 1318,
+          "total_tokens": 15193,
+          "llm_calls": 9,
+          "tool_calls": 5,
+          "investigation_steps": 5,
+          "estimated_cost_usd": 0.01633725
+        }
+      }
+    },
+    {
+      "incident_id": "INC-005",
+      "rag": {
+        "incident_id": "INC-005",
+        "approach": "rag_baseline",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The expected root cause is a progressive memory leak in email-service from the emailMemoryLeak fault scenario that pads confirmation email bodies and increases memory over time. The actual output instead attributes the issue to saturation/slowdown in the asynchronous order-processing path, particularly order-worker dependence on inventory-service and queue backup, while explicitly saying no single failing component is confirmed. This does not match the same underlying issue or mechanism."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully aligned with the retrieval context."
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stayed fully focused on the incident cause with no irrelevant statements, so it directly addressed the input as well as possible."
+          }
+        ],
+        "execution": {
+          "latency_ms": 2856.2092920001305,
+          "input_tokens": 852,
+          "output_tokens": 233,
+          "total_tokens": 1085,
+          "llm_calls": 1,
+          "tool_calls": 0,
+          "investigation_steps": null,
+          "estimated_cost_usd": 0.0016875
+        }
+      },
+      "agent": {
+        "incident_id": "INC-005",
+        "approach": "agent",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.809534946489911,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same core issue as the Expected Output: progressive memory-related degradation in email-service leading to failures over time under load. It preserves the mechanism of memory pressure/resource saturation and ties it to confirmation email processing latency and failure. However, it is less precise because it frames the cause as a likely memory leak or related issue rather than explicitly naming the emailMemoryLeak fault scenario and the padded confirmation email bodies that drive memory growth."
+          },
+          {
+            "name": "Evidence Precision",
+            "score": 0.7,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+          },
+          {
+            "name": "Evidence Recall",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully aligned with the retrieval context."
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stayed fully on topic and directly addressed the incident question without any irrelevant information. It can't be higher since 1.00 is already a perfect score, and the output appropriately matched the input."
+          },
+          {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "3 unique tool/service selections across 3 tool calls."
+          },
+          {
+            "name": "Empty Tool Rate",
+            "score": 0.3333333333333333,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "1 empty-result tool calls across 3 total tool calls."
+          },
+          {
+            "name": "Evidence Coverage",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "7 relevant evidence items gathered out of 7 expected supporting evidence items."
+          },
+          {
+            "name": "Stop Quality",
+            "score": 0.5,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: duplicate_selection."
+          }
+        ],
+        "execution": {
+          "latency_ms": 15945.566875001532,
+          "input_tokens": 7551,
+          "output_tokens": 1129,
+          "total_tokens": 8680,
+          "llm_calls": 7,
+          "tool_calls": 3,
+          "investigation_steps": 3,
+          "estimated_cost_usd": 0.01074375
+        }
+      }
+    },
+    {
+      "incident_id": "INC-006",
+      "rag": {
+        "incident_id": "INC-006",
+        "approach": "rag_baseline",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 0.2019353670841187,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies a broad checkout-side post-payment/cart-clearing or state-persistence issue, but it does not match the Expected Output\u2019s specific root cause: a cartFailure fault causing some EmptyCart operations to be routed to a failing cart store. While both mention carts not being cleared after successful checkout, the Actual Output misses the key mechanism and service-level fault described in the Expected Output."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output is fully consistent with the retrieval context. Great job!"
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response fully addresses the question about what caused incident INC-006 and contains no irrelevant statements. It\u2019s maximally relevant and concise."
+          }
+        ],
+        "execution": {
+          "latency_ms": 2991.931290998764,
+          "input_tokens": 850,
+          "output_tokens": 228,
+          "total_tokens": 1078,
+          "llm_calls": 1,
+          "tool_calls": 0,
+          "investigation_steps": null,
+          "estimated_cost_usd": 0.0016635
+        }
+      },
+      "agent": {
+        "incident_id": "INC-006",
+        "approach": "agent",
+        "metrics": [
+          {
+            "name": "Root Cause Accuracy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same underlying root cause as the Expected Output: failures on the cart-service EmptyCart path caused some cart-clearing operations to fail after successful checkout, leaving carts uncleared. Although it omits the specific terms 'cartFailure fault' and routing to a failing cart store, it is semantically equivalent on the key mechanism and outcome required by the evaluation steps."
+          },
+          {
+            "name": "Evidence Precision",
+            "score": 0.5,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+          },
+          {
+            "name": "Evidence Recall",
+            "score": 0.6666666666666666,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+          },
+          {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully aligned with the retrieval context. Great job!"
+          },
+          {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stayed fully focused on answering what caused incident INC-006, with no irrelevant statements or off-topic content."
+          },
+          {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "6 unique tool/service selections across 6 tool calls."
+          },
+          {
+            "name": "Empty Tool Rate",
+            "score": 0.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "0 empty-result tool calls across 6 total tool calls."
+          },
+          {
+            "name": "Evidence Coverage",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "6 relevant evidence items gathered out of 6 expected supporting evidence items."
+          },
+          {
+            "name": "Stop Quality",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: tool_budget_exhausted."
+          }
+        ],
+        "execution": {
+          "latency_ms": 18489.22258300081,
+          "input_tokens": 12612,
+          "output_tokens": 1313,
+          "total_tokens": 13925,
+          "llm_calls": 9,
+          "tool_calls": 6,
+          "investigation_steps": 6,
+          "estimated_cost_usd": 0.0153675
+        }
+      }
+    }
+  ],
+  "failures": []
+}
