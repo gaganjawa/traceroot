@@ -1,0 +1,13 @@
+[
+  {
+    "id": "CHANGE-005-01",
+    "timestamp": "2026-09-21T08:45:00Z",
+    "service": "email-service",
+    "commit_sha": "6e1d2a4",
+    "files": [
+      "email_server.rb"
+    ],
+    "description": "Improve structured logging for confirmation emails",
+    "diff": "Logging-only change; message rendering behavior unchanged."
+  }
+]

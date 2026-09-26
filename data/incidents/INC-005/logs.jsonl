@@ -1,0 +1,7 @@
+{"id":"LOG-005-01","timestamp":"2026-09-21T10:55:00Z","service":"email-service","level":"INFO","message":"Order confirmation email processed successfully"}
+{"id":"LOG-005-02","timestamp":"2026-09-21T11:08:00Z","service":"email-service","level":"INFO","message":"Order confirmation email processed successfully processing_ms=185"}
+{"id":"LOG-005-03","timestamp":"2026-09-21T11:20:00Z","service":"email-service","level":"WARN","message":"Email processing latency elevated processing_ms=740"}
+{"id":"LOG-005-04","timestamp":"2026-09-21T11:31:00Z","service":"email-service","level":"WARN","message":"Memory pressure detected while rendering confirmation email"}
+{"id":"LOG-005-05","timestamp":"2026-09-21T11:37:00Z","service":"email-service","level":"ERROR","message":"Order confirmation email processing failed after memory allocation error"}
+{"id":"LOG-005-06","timestamp":"2026-09-21T11:38:00Z","service":"checkout-service","level":"INFO","message":"Checkout completed; order persisted successfully"}
+{"id":"LOG-005-07","timestamp":"2026-09-21T11:39:00Z","service":"payment-service","level":"INFO","message":"Payment charge completed successfully"}

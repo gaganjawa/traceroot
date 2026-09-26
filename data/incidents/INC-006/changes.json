@@ -1,0 +1,24 @@
+[
+  {
+    "id": "CHANGE-006-01",
+    "timestamp": "2026-09-22T08:15:00Z",
+    "service": "checkout-service",
+    "commit_sha": "f9d21bc",
+    "files": [
+      "checkout/telemetry.go"
+    ],
+    "description": "Add additional checkout trace attributes",
+    "diff": "Telemetry-only change; checkout orchestration unchanged."
+  },
+  {
+    "id": "CHANGE-006-02",
+    "timestamp": "2026-09-21T15:45:00Z",
+    "service": "cart-service",
+    "commit_sha": "d81ac55",
+    "files": [
+      "CartStore.cs"
+    ],
+    "description": "Dependency version update",
+    "diff": "No functional EmptyCart logic change."
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "id": "INC-005",
+  "title": "Email service progressively slows after sustained checkout traffic",
+  "description": "Order confirmation emails become increasingly delayed after sustained traffic. Checkout completes successfully, but email processing latency grows over time and some confirmation requests eventually fail.",
+  "start_time": "2026-09-21T11:00:00Z",
+  "suspected_services": [
+    "email-service",
+    "checkout-service"
+  ]
+}

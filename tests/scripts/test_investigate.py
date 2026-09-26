@@ -200,3 +200,40 @@ def test_print_agent_result_prints_expected_output(capsys):
     assert "checkout-service" in output
     assert "0.95" in output
     assert str(output_path) in output
+
+
+def test_help_includes_examples_and_arguments(capsys):
+    with pytest.raises(SystemExit) as exc:
+        build_parser().parse_args(["--help"])
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert "--incident-id INC-001" in output
+    assert "--incident-id INC-002 --max-tool-calls 4" in output
+    assert "default: 6" in output
+    assert "--getting-started" in output
+    assert "experiments/results/<incident-id>-agent.json" in output
+
+
+def test_getting_started_exits_without_incident_or_investigation(monkeypatch, capsys):
+    from scripts.investigate import main
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr("sys.argv", ["investigate.py", "--getting-started"])
+    with (
+        patch("scripts.investigate.run_investigation") as run,
+        pytest.raises(SystemExit) as exc,
+    ):
+        main()
+    assert exc.value.code == 0
+    run.assert_not_called()
+    output = capsys.readouterr().out
+    for term in (
+        "hypotheses",
+        "tool calls",
+        "Evidence IDs",
+        "stop reason",
+        "final RCA",
+        "--max-tool-calls",
+        "experiments/results/",
+    ):
+        assert term in output

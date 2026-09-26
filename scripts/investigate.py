@@ -5,23 +5,75 @@ from traceroot.data.loader import load_incident
 from traceroot.experiments.agent import run_agent_experiment
 from traceroot.experiments.models import AgentExperimentRecord
 
+GETTING_STARTED = """TraceRoot: Getting Started
+
+1. From the repository root, run uv sync and set OPENAI_API_KEY in .env
+   or your environment. Live investigations make model API calls.
+2. Choose an incident folder from data/incidents/, such as INC-001.
+3. Set --max-tool-calls (default 6): the maximum number of evidence queries,
+   not the total number of LLM requests. The agent may stop earlier.
+4. Run an investigation using one of the examples below.
+5. Review hypotheses: possible causes marked OPEN (unresolved), SUPPORTED
+   (backed by evidence), or REJECTED (not supported after verification).
+6. Inspect tool calls: queries of local logs, metrics, deployments, or code
+   changes. Evidence IDs identify returned records so you can trace RCA claims.
+7. Inspect the stop reason and its reasoning: model_stop means the model chose
+   to stop; tool_budget_exhausted means the query limit was reached;
+   duplicate_selection means a repeated query was blocked;
+   consecutive_empty_results means two successive queries returned no evidence.
+   Stopping does not by itself establish a root cause.
+8. Review the final RCA (root-cause analysis): proposed cause, affected service,
+   explanation, confidence, and evidence IDs. No evidence means an ungrounded RCA.
+
+Results and full tool observations are saved to
+experiments/results/<incident-id>-agent.json. Repeating an incident overwrites
+that CLI result file. The terminal prints a compact summary.
+
+Examples:
+  uv run python scripts/investigate.py --incident-id INC-001
+  uv run python scripts/investigate.py --incident-id INC-002 --max-tool-calls 4
+
+For a guided UI, run: uv run streamlit run app.py
+The UI also accepts new incidents (currently without operational evidence) and
+can optionally evaluate completed frozen incidents. Ground truth is loaded only
+by the evaluator, never by the investigation agent.
+"""
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run a TraceRoot incident investigation."
+        description=(
+            "Investigate a local TraceRoot incident and save an evidence-linked "
+            "root-cause analysis. Run from the repository root with OPENAI_API_KEY set."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""Examples:
+  uv run python scripts/investigate.py --incident-id INC-001
+  uv run python scripts/investigate.py --incident-id INC-002 --max-tool-calls 4
+
+Results: experiments/results/<incident-id>-agent.json (overwritten on rerun).
+Use --getting-started for the workflow and explanations of the output.
+""",
     )
 
     parser.add_argument(
         "--incident-id",
         required=True,
-        help="Incident ID to investigate, e.g. INC-001",
+        help="Folder name under data/incidents/, such as INC-001 (required for an investigation).",
     )
 
     parser.add_argument(
         "--max-tool-calls",
         type=int,
         default=6,
-        help="Maximum number of tools to investigate, e.g. 6",
+        help="Maximum evidence queries, as a positive integer (default: 6). The agent may stop earlier; this is not an LLM-call limit.",
+    )
+
+    parser.add_argument(
+        "--getting-started",
+        action="version",
+        version=GETTING_STARTED,
+        help="Print a guided walkthrough and exit; no incident or API key needed.",
     )
 
     return parser

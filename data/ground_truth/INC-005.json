@@ -1,0 +1,15 @@
+{
+  "incident_id": "INC-005",
+  "root_cause": "Progressive memory growth in email-service caused by the emailMemoryLeak fault scenario, which pads confirmation email bodies and increases memory consumption over time.",
+  "root_cause_category": "resource_degradation",
+  "affected_service": "email-service",
+  "supporting_evidence_ids": [
+    "LOG-005-03",
+    "LOG-005-04",
+    "LOG-005-05",
+    "METRIC-005-02",
+    "METRIC-005-03",
+    "METRIC-005-04",
+    "METRIC-005-05"
+  ]
+}

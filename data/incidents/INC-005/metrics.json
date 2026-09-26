@@ -1,0 +1,42 @@
+[
+  {
+    "id": "METRIC-005-01",
+    "timestamp": "2026-09-21T10:55:00Z",
+    "service": "email-service",
+    "metric": "process.memory.rss",
+    "value": 128,
+    "unit": "MiB"
+  },
+  {
+    "id": "METRIC-005-02",
+    "timestamp": "2026-09-21T11:10:00Z",
+    "service": "email-service",
+    "metric": "process.memory.rss",
+    "value": 231,
+    "unit": "MiB"
+  },
+  {
+    "id": "METRIC-005-03",
+    "timestamp": "2026-09-21T11:25:00Z",
+    "service": "email-service",
+    "metric": "process.memory.rss",
+    "value": 428,
+    "unit": "MiB"
+  },
+  {
+    "id": "METRIC-005-04",
+    "timestamp": "2026-09-21T11:36:00Z",
+    "service": "email-service",
+    "metric": "process.memory.rss",
+    "value": 782,
+    "unit": "MiB"
+  },
+  {
+    "id": "METRIC-005-05",
+    "timestamp": "2026-09-21T11:36:00Z",
+    "service": "email-service",
+    "metric": "email.processing.duration.p95",
+    "value": 1840,
+    "unit": "ms"
+  }
+]

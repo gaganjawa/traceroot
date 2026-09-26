@@ -1,0 +1,7 @@
+{"id":"LOG-006-01","timestamp":"2026-09-22T09:39:51Z","service":"cart-service","level":"INFO","message":"GetCart completed successfully user_id=user-184 items=3"}
+{"id":"LOG-006-02","timestamp":"2026-09-22T09:40:07Z","service":"cart-service","level":"ERROR","message":"EmptyCart failed while writing to cart store user_id=user-184"}
+{"id":"LOG-006-03","timestamp":"2026-09-22T09:40:08Z","service":"checkout-service","level":"WARN","message":"Order completed but EmptyCart operation returned error user_id=user-184"}
+{"id":"LOG-006-04","timestamp":"2026-09-22T09:40:21Z","service":"cart-service","level":"INFO","message":"AddItem completed successfully user_id=user-251"}
+{"id":"LOG-006-05","timestamp":"2026-09-22T09:40:42Z","service":"cart-service","level":"ERROR","message":"EmptyCart failed while writing to cart store user_id=user-301"}
+{"id":"LOG-006-06","timestamp":"2026-09-22T09:40:52Z","service":"payment-service","level":"INFO","message":"Payment charge completed successfully"}
+{"id":"LOG-006-07","timestamp":"2026-09-22T09:41:03Z","service":"cart-service","level":"INFO","message":"GetCart completed successfully user_id=user-301 items=2"}

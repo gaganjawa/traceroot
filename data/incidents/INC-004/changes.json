@@ -1,0 +1,25 @@
+[
+  {
+    "id": "CHANGE-004-01",
+    "timestamp": "2026-09-20T08:20:00Z",
+    "service": "frontend",
+    "commit_sha": "b8422ac",
+    "files": [
+      "src/components/Header.tsx",
+      "src/styles/layout.css"
+    ],
+    "description": "Improve navigation accessibility and responsive layout",
+    "diff": "UI-only changes; no ad-service request handling modified."
+  },
+  {
+    "id": "CHANGE-004-02",
+    "timestamp": "2026-09-18T13:45:00Z",
+    "service": "ad-service",
+    "commit_sha": "8d991ce",
+    "files": [
+      "src/main/java/oteldemo/ads/AdService.java"
+    ],
+    "description": "Refactor ad category selection helper",
+    "diff": "Refactoring only; request failure behavior unchanged."
+  }
+]

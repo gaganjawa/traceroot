@@ -1,0 +1,10 @@
+{
+  "id": "INC-006",
+  "title": "Completed checkouts intermittently leave items in user carts",
+  "description": "Some users complete checkout successfully but their shopping carts are not cleared afterward. Add-item and get-cart operations remain largely healthy.",
+  "start_time": "2026-09-22T09:40:00Z",
+  "suspected_services": [
+    "cart-service",
+    "checkout-service"
+  ]
+}

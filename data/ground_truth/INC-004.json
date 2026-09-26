@@ -1,0 +1,11 @@
+{
+  "incident_id": "INC-004",
+  "root_cause": "Intermittent GetAds failures in the ad service caused by the enabled adFailure fault scenario.",
+  "root_cause_category": "service_fault_injection",
+  "affected_service": "ad-service",
+  "supporting_evidence_ids": [
+    "LOG-004-02",
+    "LOG-004-04",
+    "METRIC-004-02"
+  ]
+}

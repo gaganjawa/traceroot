@@ -1,0 +1,16 @@
+[
+  {
+    "id": "DEPLOY-005-01",
+    "timestamp": "2026-09-21T09:00:00Z",
+    "service": "email-service",
+    "version": "v1.9.2",
+    "description": "Dependency refresh and logging changes"
+  },
+  {
+    "id": "DEPLOY-005-02",
+    "timestamp": "2026-09-21T08:20:00Z",
+    "service": "checkout-service",
+    "version": "v3.21.1",
+    "description": "Checkout telemetry update"
+  }
+]

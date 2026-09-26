@@ -1,0 +1,14 @@
+{
+  "incident_id": "INC-006",
+  "root_cause": "A cartFailure fault caused a percentage of EmptyCart operations to be routed to a failing cart store, leaving carts uncleared after otherwise successful checkouts.",
+  "root_cause_category": "stateful_dependency_failure",
+  "affected_service": "cart-service",
+  "supporting_evidence_ids": [
+    "LOG-006-02",
+    "LOG-006-03",
+    "LOG-006-05",
+    "METRIC-006-02",
+    "METRIC-006-03",
+    "METRIC-006-04"
+  ]
+}

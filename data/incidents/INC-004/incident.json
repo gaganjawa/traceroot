@@ -1,0 +1,9 @@
+{
+  "id": "INC-004",
+  "title": "Intermittent ad retrieval failures",
+  "description": "Users intermittently fail to receive contextual ads. Most requests succeed, but a minority of GetAds requests return errors. Core checkout and browsing flows remain healthy.",
+  "start_time": "2026-09-20T10:15:00Z",
+  "suspected_services": [
+    "ad-service"
+  ]
+}

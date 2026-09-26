@@ -1,0 +1,42 @@
+[
+  {
+    "id": "METRIC-004-01",
+    "timestamp": "2026-09-20T10:14:00Z",
+    "service": "ad-service",
+    "metric": "app.ads.request.error_rate",
+    "value": 0.01,
+    "unit": "ratio"
+  },
+  {
+    "id": "METRIC-004-02",
+    "timestamp": "2026-09-20T10:16:00Z",
+    "service": "ad-service",
+    "metric": "app.ads.request.error_rate",
+    "value": 0.11,
+    "unit": "ratio"
+  },
+  {
+    "id": "METRIC-004-03",
+    "timestamp": "2026-09-20T10:16:00Z",
+    "service": "ad-service",
+    "metric": "rpc.server.duration.p95",
+    "value": 42.0,
+    "unit": "ms"
+  },
+  {
+    "id": "METRIC-004-04",
+    "timestamp": "2026-09-20T10:16:00Z",
+    "service": "ad-service",
+    "metric": "process.runtime.jvm.cpu.utilization",
+    "value": 0.21,
+    "unit": "ratio"
+  },
+  {
+    "id": "METRIC-004-05",
+    "timestamp": "2026-09-20T10:16:00Z",
+    "service": "checkout-service",
+    "metric": "request.error_rate",
+    "value": 0.003,
+    "unit": "ratio"
+  }
+]

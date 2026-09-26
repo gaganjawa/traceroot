@@ -90,3 +90,51 @@ docs/                 Project architecture and demo explanation
 - Complete delivery documentation and demo. MCP integration remains optional stretch work.
 
 Retrieval quality is evaluated separately from RCA quality. No final evaluation scores are claimed here.
+
+## Streamlit UI
+
+From the repository root, install dependencies with `uv sync`, configure
+`OPENAI_API_KEY` in `.env` or the environment, then run:
+
+```bash
+uv run streamlit run app.py
+```
+
+Choose an existing evaluation incident or enter a new incident, set the tool-call
+budget, and click **Start Investigation**. The UI uses the existing agent experiment
+runner and displays hypotheses, tool observations, stop reasoning, and the final
+RCA. Completed experiment records are saved with unique filenames under
+`experiments/results/ui/`.
+
+New incidents require no manual JSON files. Since the current operational tools
+only read local datasets, the UI creates an empty temporary dataset for each new
+investigation and removes it afterward. No live telemetry is connected: these
+runs have no evidence and their RCA should be treated as ungrounded.
+
+For completed frozen incidents, **Evaluate Result** invokes the existing evaluation
+runner and displays its available metrics and execution measurements. Ground truth
+is loaded only within this evaluator path. Evaluation uses the development
+`deepeval` dependency (included by `uv sync`) and may make additional model API calls.
+
+### First-time help
+
+The Streamlit sidebar has an expanded **Help / Getting Started** walkthrough,
+key terms, and an example investigation. For CLI help without making API calls:
+
+```bash
+uv run python scripts/investigate.py --help
+uv run python scripts/investigate.py --getting-started
+```
+
+Try either investigation from the repository root after configuring your API key:
+
+```bash
+uv run python scripts/investigate.py --incident-id INC-001
+uv run python scripts/investigate.py --incident-id INC-002 --max-tool-calls 4
+```
+
+`--incident-id` selects a folder in `data/incidents/`. `--max-tool-calls` limits
+queries for evidence (default 6); it does not limit total model requests. The CLI
+saves the full trace to `experiments/results/<incident-id>-agent.json`, overwriting
+that incident's previous CLI result. The walkthrough explains how to interpret
+hypotheses, evidence IDs, stop reasons, and the final root-cause analysis.

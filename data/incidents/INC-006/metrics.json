@@ -1,0 +1,34 @@
+[
+  {
+    "id": "METRIC-006-01",
+    "timestamp": "2026-09-22T09:41:00Z",
+    "service": "cart-service",
+    "metric": "rpc.server.error_rate",
+    "value": 0.08,
+    "unit": "ratio"
+  },
+  {
+    "id": "METRIC-006-02",
+    "timestamp": "2026-09-22T09:41:00Z",
+    "service": "cart-service",
+    "metric": "empty_cart.error_rate",
+    "value": 0.42,
+    "unit": "ratio"
+  },
+  {
+    "id": "METRIC-006-03",
+    "timestamp": "2026-09-22T09:41:00Z",
+    "service": "cart-service",
+    "metric": "get_cart.error_rate",
+    "value": 0.01,
+    "unit": "ratio"
+  },
+  {
+    "id": "METRIC-006-04",
+    "timestamp": "2026-09-22T09:41:00Z",
+    "service": "cart-service",
+    "metric": "add_item.error_rate",
+    "value": 0.01,
+    "unit": "ratio"
+  }
+]
