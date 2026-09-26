@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-005",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.0,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The expected root cause is a specific fault: progressive memory growth in email-service due to the emailMemoryLeak scenario padding confirmation email bodies and increasing memory over time. The actual output instead attributes the issue to asynchronous order-processing saturation/slowdown tied to order-worker and inventory-service, with backlog and delayed notifications, and even frames it as only a hypothesis. This changes the underlying component, cause, causal chain, and specificity rather than matching the expected memory-leak root cause."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output aligns perfectly with the retrieval context."
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response fully addresses the question about what caused incident INC-005, with no irrelevant statements to reduce relevance. Great focus and precision."
+        }
+    ],
+    "execution": {
+        "latency_ms": 3084.6787090013095,
+        "input_tokens": 852,
+        "output_tokens": 251,
+        "total_tokens": 1103,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.0017684999999999999
+    }
+}

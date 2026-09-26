@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-004",
+    "approach": "rag_baseline",
+    "model": "gpt-5.4-mini",
+    "top_k": 3,
+    "retrieved_knowledge": [
+        {
+            "chunk_id": "checkout-runbook.md::0",
+            "source": "checkout-runbook.md",
+            "score": 0.39761228804454396
+        },
+        {
+            "chunk_id": "architecture.md::0",
+            "source": "architecture.md",
+            "score": 0.37019910881800766
+        },
+        {
+            "chunk_id": "payment-runbook.md::0",
+            "source": "payment-runbook.md",
+            "score": 0.36530164539213333
+        }
+    ],
+    "result": {
+        "incident_id": "INC-004",
+        "root_cause": "Insufficient evidence to determine a confirmed root cause; the incident is consistent with an intermittent downstream or resource-capacity issue affecting GetAds requests rather than checkout/payment systems.",
+        "affected_service": "GetAds / contextual ads retrieval service",
+        "evidence_ids": [],
+        "explanation": "The supplied knowledge base only documents checkout, payment, and broader commerce architecture. It does not include any ad-serving service details, metrics, logs, or deployment/configuration changes for GetAds. Given the incident description, core checkout and browsing remain healthy while a minority of ad retrieval requests fail, which suggests a localized issue in the ads retrieval path or one of its dependencies. However, there is not enough evidence to confirm whether the cause is a saturated pool, downstream timeout, validation issue, or recent change. Any specific root cause would be speculative based on the provided material.",
+        "confidence": 0.18
+    },
+    "latency_ms": 2960.0454999999783,
+    "input_tokens": 880,
+    "output_tokens": 187,
+    "llm_calls": 1,
+    "estimated_cost_usd": 0.0015015,
+    "timestamp": "2026-09-26T19:17:00.839410Z"
+}

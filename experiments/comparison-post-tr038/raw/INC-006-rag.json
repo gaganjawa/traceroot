@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-006",
+    "approach": "rag_baseline",
+    "model": "gpt-5.4-mini",
+    "top_k": 3,
+    "retrieved_knowledge": [
+        {
+            "chunk_id": "checkout-runbook.md::0",
+            "source": "checkout-runbook.md",
+            "score": 0.48220257951811696
+        },
+        {
+            "chunk_id": "architecture.md::0",
+            "source": "architecture.md",
+            "score": 0.43729657733958727
+        },
+        {
+            "chunk_id": "order-processing-runbook.md::0",
+            "source": "order-processing-runbook.md",
+            "score": 0.3921377257112615
+        }
+    ],
+    "result": {
+        "incident_id": "INC-006",
+        "root_cause": "Insufficient evidence to confirm a single root cause; the most likely issue is a checkout-service problem after successful payment authorization, potentially related to checkout-state persistence or database connection pool saturation causing the cart-clear/update step to intermittently fail.",
+        "affected_service": "checkout-service",
+        "evidence_ids": [],
+        "explanation": "The symptom is very specific: checkout completes successfully, but carts are not always cleared afterward, while add-item and get-cart remain healthy. That points away from general cart functionality and toward the post-checkout path in checkout-service, especially the checkout-state persistence / cart-clearing step. The checkout runbook highlights database connection pool saturation, connection waiters, and query latency as common causes of slow or failing checkout operations. However, the supplied information does not include metrics, logs, or deployment/config changes, so this cannot be confirmed as the definitive root cause. Architecture knowledge also shows checkout-service is responsible for checkout session management and checkout-state persistence, making it the primary suspect.",
+        "confidence": 0.58
+    },
+    "latency_ms": 2553.8221659990086,
+    "input_tokens": 850,
+    "output_tokens": 209,
+    "llm_calls": 1,
+    "estimated_cost_usd": 0.001578,
+    "timestamp": "2026-09-26T19:18:34.539732Z"
+}

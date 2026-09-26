@@ -1,0 +1,79 @@
+{
+    "incident_id": "INC-002",
+    "approach": "agent",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.266679204372879,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies a high-level symptom and trigger—payment authorization requests were rejected with validation errors after 09:15, causing some failures—but it does not state the specific root cause from the Expected Output: the payment-service v3.7.0 request-mapping change incorrectly serialized the currency field. It matches the general failure condition at the provider but misses the underlying issue, component/version detail, and serialization bug required for semantic equivalence."
+        },
+        {
+            "name": "Evidence Precision",
+            "score": 0.4,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+        },
+        {
+            "name": "Evidence Recall",
+            "score": 0.4,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions; the actual output appears fully aligned with the retrieval context. Great job!"
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response fully addresses the question with no irrelevant content, so it could not reasonably be higher. Great job staying focused and directly relevant."
+        },
+        {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "5 unique tool/service selections across 5 tool calls."
+        },
+        {
+            "name": "Empty Tool Rate",
+            "score": 0.4,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "2 empty-result tool calls across 5 total tool calls."
+        },
+        {
+            "name": "Evidence Coverage",
+            "score": 0.4,
+            "passed": false,
+            "evaluator_type": "deterministic",
+            "reason": "2 relevant evidence items gathered out of 5 expected supporting evidence items."
+        },
+        {
+            "name": "Stop Quality",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: model_stop."
+        }
+    ],
+    "execution": {
+        "latency_ms": 14366.373167002166,
+        "input_tokens": 11001,
+        "output_tokens": 1516,
+        "total_tokens": 12517,
+        "llm_calls": 9,
+        "tool_calls": 5,
+        "investigation_steps": 5,
+        "estimated_cost_usd": 0.015072750000000001
+    }
+}

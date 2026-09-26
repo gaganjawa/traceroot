@@ -1,0 +1,124 @@
+{
+    "incident_id": "INC-005",
+    "approach": "agent",
+    "model": "gpt-5.4-mini",
+    "hypotheses": [
+        {
+            "description": "email-service is accumulating an internal backlog under sustained checkout traffic, causing queue depth and processing latency to grow until some confirmation requests time out or fail.",
+            "status": "supported"
+        },
+        {
+            "description": "email-service has a resource leak or saturation issue (for example, connection/thread pool exhaustion or memory growth) that worsens over time under load, slowing email processing progressively.",
+            "status": "supported"
+        },
+        {
+            "description": "checkout-service may be generating bursts of duplicate or retrying confirmation requests during sustained traffic, increasing load on email-service and causing delayed or failed email processing.",
+            "status": "open"
+        }
+    ],
+    "evidence_ids": [
+        "METRIC-005-01",
+        "METRIC-005-02",
+        "METRIC-005-03",
+        "METRIC-005-04",
+        "METRIC-005-05",
+        "LOG-005-01",
+        "LOG-005-02",
+        "LOG-005-03",
+        "LOG-005-04",
+        "LOG-005-05"
+    ],
+    "tool_history": [
+        {
+            "tool_name": "metrics",
+            "service": "email-service",
+            "evidence_ids": [
+                "METRIC-005-01",
+                "METRIC-005-02",
+                "METRIC-005-03",
+                "METRIC-005-04",
+                "METRIC-005-05"
+            ],
+            "observations": [
+                "id='METRIC-005-01' timestamp=datetime.datetime(2026, 9, 21, 10, 55, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=128.0 unit='MiB'",
+                "id='METRIC-005-02' timestamp=datetime.datetime(2026, 9, 21, 11, 10, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=231.0 unit='MiB'",
+                "id='METRIC-005-03' timestamp=datetime.datetime(2026, 9, 21, 11, 25, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=428.0 unit='MiB'",
+                "id='METRIC-005-04' timestamp=datetime.datetime(2026, 9, 21, 11, 36, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=782.0 unit='MiB'",
+                "id='METRIC-005-05' timestamp=datetime.datetime(2026, 9, 21, 11, 36, tzinfo=TzInfo(0)) service='email-service' metric='email.processing.duration.p95' value=1840.0 unit='ms'"
+            ],
+            "reasoning": "The key unresolved question is whether email processing is degrading because the service is saturating or building internal backlog under sustained checkout traffic. Metrics for email-service are most likely to show time-correlated growth in queue depth, processing latency, thread/connection pool exhaustion, error rates, memory/CPU trends, or request timeouts, which can distinguish backlog/saturation/resource-leak hypotheses from a checkout-side duplicate-request problem. Since no evidence has been gathered yet, starting with service-targeted metrics offers the highest signal."
+        },
+        {
+            "tool_name": "logs",
+            "service": "email-service",
+            "evidence_ids": [
+                "LOG-005-01",
+                "LOG-005-02",
+                "LOG-005-03",
+                "LOG-005-04",
+                "LOG-005-05"
+            ],
+            "observations": [
+                "id='LOG-005-01' timestamp=datetime.datetime(2026, 9, 21, 10, 55, tzinfo=TzInfo(0)) service='email-service' level='INFO' message='Order confirmation email processed successfully'",
+                "id='LOG-005-02' timestamp=datetime.datetime(2026, 9, 21, 11, 8, tzinfo=TzInfo(0)) service='email-service' level='INFO' message='Order confirmation email processed successfully processing_ms=185'",
+                "id='LOG-005-03' timestamp=datetime.datetime(2026, 9, 21, 11, 20, tzinfo=TzInfo(0)) service='email-service' level='WARN' message='Email processing latency elevated processing_ms=740'",
+                "id='LOG-005-04' timestamp=datetime.datetime(2026, 9, 21, 11, 31, tzinfo=TzInfo(0)) service='email-service' level='WARN' message='Memory pressure detected while rendering confirmation email'",
+                "id='LOG-005-05' timestamp=datetime.datetime(2026, 9, 21, 11, 37, tzinfo=TzInfo(0)) service='email-service' level='ERROR' message='Order confirmation email processing failed after memory allocation error'"
+            ],
+            "reasoning": "The unresolved question is whether email-service is slowing because it is internally backing up/saturating or because it is leaking resources, versus being overloaded by duplicate/retrying requests from checkout. We already have metrics showing rising RSS and worsening p95 latency, which suggests a service-side degradation but does not reveal the mechanism. Application logs from email-service are the next best discriminator: they can show queue buildup, worker timeouts, connection/thread pool exhaustion, retry storms, GC or OOM warnings, and per-request failures that would support backlog/saturation or resource-leak hypotheses. They may also reveal whether the service is receiving repeated duplicate confirmation requests rather than single steady traffic."
+        },
+        {
+            "tool_name": "metrics",
+            "service": "checkout-service",
+            "evidence_ids": [],
+            "observations": [],
+            "reasoning": "The unresolved question is whether the email-service degradation is purely internal (backlog/resource leak) or being driven by the upstream checkout-service sending duplicate/retrying confirmation requests. We already have email-service metrics and logs showing rising RSS and worsening email latency, which support service-side degradation but do not explain the trigger. The most useful next evidence is checkout-service metrics, especially request/retry/error rates and any spike patterns that could indicate duplicate confirmation submissions or retry storms under sustained traffic. This would directly test the third hypothesis and help distinguish upstream load amplification from an isolated email-service issue."
+        },
+        {
+            "tool_name": "metrics",
+            "service": null,
+            "evidence_ids": [
+                "METRIC-005-01",
+                "METRIC-005-02",
+                "METRIC-005-03",
+                "METRIC-005-04",
+                "METRIC-005-05"
+            ],
+            "observations": [
+                "id='METRIC-005-01' timestamp=datetime.datetime(2026, 9, 21, 10, 55, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=128.0 unit='MiB'",
+                "id='METRIC-005-02' timestamp=datetime.datetime(2026, 9, 21, 11, 10, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=231.0 unit='MiB'",
+                "id='METRIC-005-03' timestamp=datetime.datetime(2026, 9, 21, 11, 25, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=428.0 unit='MiB'",
+                "id='METRIC-005-04' timestamp=datetime.datetime(2026, 9, 21, 11, 36, tzinfo=TzInfo(0)) service='email-service' metric='process.memory.rss' value=782.0 unit='MiB'",
+                "id='METRIC-005-05' timestamp=datetime.datetime(2026, 9, 21, 11, 36, tzinfo=TzInfo(0)) service='email-service' metric='email.processing.duration.p95' value=1840.0 unit='ms'"
+            ],
+            "reasoning": "The key unresolved question is whether the worsening email latency and growing memory usage are driven solely by email-service internal degradation, or amplified by upstream checkout-service behavior such as retries/duplicate confirmation bursts. We already have email-service metrics and logs showing progressive RSS growth and rising processing latency, so the next most discriminating evidence is checkout-service metrics. Request/error/retry rates, spikes, or traffic amplification patterns would support the duplicate/retrying request hypothesis and explain the sustained load on email-service; absence of such patterns would make the issue more likely internal to email-service. This avoids repeating the already-used email-service metrics/logs combination and targets the upstream source of load."
+        }
+    ],
+    "stop_reason": "duplicate_selection",
+    "stop_reasoning": "The unresolved question is whether the email-service degradation is purely internal (backlog/resource leak) or being amplified by upstream checkout-service behavior such as duplicate submissions or retries. We already have strong email-service evidence: rising RSS, increasing processing latency, and memory-allocation failures. The most discriminating next evidence is checkout-service metrics, because they can reveal elevated retry/error rates or bursts of confirmation attempts that would explain the sustained load on email-service. This avoids repeating the already-gathered email-service metrics/logs and targets the remaining hypothesis about upstream load amplification.",
+    "result": {
+        "incident_id": "INC-005",
+        "root_cause": "email-service progressively degraded under sustained checkout traffic due to internal resource saturation/backlog growth, with memory usage rising sharply and email processing latency increasing until confirmation email processing began failing.",
+        "affected_service": "email-service",
+        "evidence_ids": [
+            "METRIC-005-01",
+            "METRIC-005-02",
+            "METRIC-005-03",
+            "METRIC-005-04",
+            "METRIC-005-05",
+            "LOG-005-01",
+            "LOG-005-02",
+            "LOG-005-03",
+            "LOG-005-04",
+            "LOG-005-05"
+        ],
+        "explanation": "The investigation showed a clear time-correlated degradation within email-service. RSS increased from 128 MiB to 782 MiB over the incident window, while p95 email processing latency reached 1840 ms. Logs moved from successful processing to elevated latency, then memory pressure warnings, and finally a processing failure after a memory allocation error. This supports the hypotheses that email-service was building an internal backlog and/or hitting a resource saturation condition under sustained load. The evidence does not establish a checkout-side retry/duplicate burst, so that remains an open possibility but not the primary cause.",
+        "confidence": 0.9
+    },
+    "latency_ms": 15194.337082997663,
+    "input_tokens": 12221,
+    "output_tokens": 1385,
+    "llm_calls": 8,
+    "estimated_cost_usd": 0.01539825,
+    "timestamp": "2026-09-26T19:18:02.488151Z"
+}

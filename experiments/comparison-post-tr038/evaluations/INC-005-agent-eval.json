@@ -1,0 +1,79 @@
+{
+    "incident_id": "INC-005",
+    "approach": "agent",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.7280996649899866,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output matches the Expected Output on the core symptom and mechanism of progressive memory growth in email-service leading to degraded confirmation email processing under sustained load. However, it does not identify the specific root cause from the Expected Output: the emailMemoryLeak fault scenario that pads confirmation email bodies and drives memory consumption over time. Because it describes a broader resource saturation/backlog explanation rather than the explicit injected memory leak cause, the alignment is only partial."
+        },
+        {
+            "name": "Evidence Precision",
+            "score": 0.7,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+        },
+        {
+            "name": "Evidence Recall",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully aligned with the retrieval context. Great job!"
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response was fully relevant to the question and contained no irrelevant statements. It directly addressed what caused incident INC-005, so it could not reasonably be higher."
+        },
+        {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "4 unique tool/service selections across 4 tool calls."
+        },
+        {
+            "name": "Empty Tool Rate",
+            "score": 0.25,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "1 empty-result tool calls across 4 total tool calls."
+        },
+        {
+            "name": "Evidence Coverage",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "7 relevant evidence items gathered out of 7 expected supporting evidence items."
+        },
+        {
+            "name": "Stop Quality",
+            "score": 0.5,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: duplicate_selection."
+        }
+    ],
+    "execution": {
+        "latency_ms": 15194.337082997663,
+        "input_tokens": 12221,
+        "output_tokens": 1385,
+        "total_tokens": 13606,
+        "llm_calls": 8,
+        "tool_calls": 4,
+        "investigation_steps": 4,
+        "estimated_cost_usd": 0.01539825
+    }
+}

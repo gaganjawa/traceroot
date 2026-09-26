@@ -1,0 +1,79 @@
+{
+    "incident_id": "INC-006",
+    "approach": "agent",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output matches the Expected Output on the core root cause: checkout-triggered cart clearing/EmptyCart operations intermittently failed due to writes being routed to or performed against a failing cart store/cart-service backend, which left carts uncleared even though checkout otherwise succeeded. The wording differs, but the underlying issue and outcome are semantically equivalent."
+        },
+        {
+            "name": "Evidence Precision",
+            "score": 0.5454545454545454,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of cited evidence that is relevant."
+        },
+        {
+            "name": "Evidence Recall",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Fraction of relevant evidence that was cited."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully aligned with the retrieval context."
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response fully addressed the incident question without any irrelevant content, so it is as relevant as possible."
+        },
+        {
+            "name": "Tool Efficiency",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "5 unique tool/service selections across 5 tool calls."
+        },
+        {
+            "name": "Empty Tool Rate",
+            "score": 0.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "0 empty-result tool calls across 5 total tool calls."
+        },
+        {
+            "name": "Evidence Coverage",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "6 relevant evidence items gathered out of 6 expected supporting evidence items."
+        },
+        {
+            "name": "Stop Quality",
+            "score": 0.5,
+            "passed": true,
+            "evaluator_type": "deterministic",
+            "reason": "Investigation stopped with reason: duplicate_selection."
+        }
+    ],
+    "execution": {
+        "latency_ms": 16022.187291000591,
+        "input_tokens": 13340,
+        "output_tokens": 1546,
+        "total_tokens": 14886,
+        "llm_calls": 9,
+        "tool_calls": 5,
+        "investigation_steps": 5,
+        "estimated_cost_usd": 0.016962
+    }
+}

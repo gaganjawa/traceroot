@@ -1,0 +1,140 @@
+{
+    "incident_id": "INC-003",
+    "approach": "agent",
+    "model": "gpt-5.4-mini",
+    "hypotheses": [
+        {
+            "description": "The asynchronous order-processing workers may be under-provisioned or unhealthy, causing the consumer rate to fall below the incoming order rate and the backlog to grow.",
+            "status": "rejected"
+        },
+        {
+            "description": "The message queue or broker used for order processing may be experiencing delivery lag, partition imbalance, or consumer offset lag, delaying order events from reaching processors.",
+            "status": "open"
+        },
+        {
+            "description": "A downstream dependency invoked during asynchronous processing may be slow or failing, causing workers to retry or block and reducing overall throughput, which delays confirmations and increases backlog.",
+            "status": "supported"
+        }
+    ],
+    "evidence_ids": [
+        "METRIC-003-01",
+        "METRIC-003-02",
+        "METRIC-003-03",
+        "LOG-003-01",
+        "LOG-003-02",
+        "LOG-003-03",
+        "LOG-003-04",
+        "LOG-003-05",
+        "LOG-003-06",
+        "LOG-003-07",
+        "LOG-003-08",
+        "LOG-003-09",
+        "LOG-003-10",
+        "CHANGE-003-01",
+        "DEPLOY-003-01"
+    ],
+    "tool_history": [
+        {
+            "tool_name": "metrics",
+            "service": null,
+            "evidence_ids": [
+                "METRIC-003-01",
+                "METRIC-003-02",
+                "METRIC-003-03"
+            ],
+            "observations": [
+                "id='METRIC-003-01' timestamp=datetime.datetime(2026, 9, 22, 11, 1, tzinfo=TzInfo(0)) service='order-worker' metric='order_processing_queue_depth' value=1842.0 unit='count'",
+                "id='METRIC-003-02' timestamp=datetime.datetime(2026, 9, 22, 11, 1, tzinfo=TzInfo(0)) service='inventory-service' metric='http_request_duration_p95' value=5200.0 unit='ms'",
+                "id='METRIC-003-03' timestamp=datetime.datetime(2026, 9, 22, 11, 1, tzinfo=TzInfo(0)) service='order-worker' metric='cpu_utilization' value=31.0 unit='percent'"
+            ],
+            "reasoning": "The key unresolved question is whether backlog growth is caused by insufficient/failed workers, queue lag, or a downstream slowdown. Cross-service metrics are the best next evidence because they can quickly show whether order-processing throughput is dropping, queue depth/consumer lag is rising, workers are saturated or unhealthy, or a downstream dependency is slowing requests. This broad view is more discriminating than logs at this stage because we do not yet know which service is implicated, and no prior evidence has been collected."
+        },
+        {
+            "tool_name": "logs",
+            "service": "order-worker",
+            "evidence_ids": [
+                "LOG-003-01",
+                "LOG-003-02",
+                "LOG-003-03",
+                "LOG-003-04",
+                "LOG-003-05",
+                "LOG-003-06",
+                "LOG-003-07",
+                "LOG-003-08",
+                "LOG-003-09",
+                "LOG-003-10"
+            ],
+            "observations": [
+                "id='LOG-003-01' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 4, tzinfo=TzInfo(0)) service='order-worker' level='INFO' message='Order ORD-28491 received for asynchronous processing'",
+                "id='LOG-003-02' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 9, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'",
+                "id='LOG-003-03' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 10, tzinfo=TzInfo(0)) service='order-worker' level='WARN' message='Retrying inventory reservation after downstream timeout'",
+                "id='LOG-003-04' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 15, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'",
+                "id='LOG-003-05' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 16, tzinfo=TzInfo(0)) service='order-worker' level='WARN' message='Retrying inventory reservation after downstream timeout'",
+                "id='LOG-003-06' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 21, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'",
+                "id='LOG-003-07' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 22, tzinfo=TzInfo(0)) service='order-worker' level='WARN' message='Retrying inventory reservation after downstream timeout'",
+                "id='LOG-003-08' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 27, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'",
+                "id='LOG-003-09' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 28, tzinfo=TzInfo(0)) service='order-worker' level='WARN' message='Retrying inventory reservation after downstream timeout'",
+                "id='LOG-003-10' timestamp=datetime.datetime(2026, 9, 22, 11, 0, 33, tzinfo=TzInfo(0)) service='order-worker' level='ERROR' message='Inventory reservation request timed out after 5000ms'"
+            ],
+            "reasoning": "The unresolved question is whether the growing backlog is caused by worker-side failures/retries or by a downstream dependency slowing processing. We already have metrics showing a large queue depth, low worker CPU, and high inventory latency, so the next most discriminating evidence is worker application logs. Logs from order-worker can reveal exceptions, timeouts, retry storms, or dependency-specific errors that would support the downstream-slow/failing hypothesis, or show worker crashes/health issues that would support under-provisioned/unhealthy workers. This is more targeted than repeating metrics and should add causal detail rather than another symptom snapshot."
+        },
+        {
+            "tool_name": "deployments",
+            "service": "inventory-service",
+            "evidence_ids": [],
+            "observations": [],
+            "reasoning": "The unresolved question is whether the backlog is being driven purely by a slow downstream dependency or whether a recent change introduced the slowdown. We already have strong evidence of inventory timeouts in order-worker logs and high inventory latency in metrics, so the most useful next evidence is recent deployments for inventory-service. That can confirm or rule out a rollout/regression causing the timeout spike, and it is more discriminating than collecting more logs or metrics from the same services. I’m choosing the service-targeted deployment history for the downstream dependency because it could explain the sudden processing delay and retry storm affecting order confirmations."
+        },
+        {
+            "tool_name": "code_changes",
+            "service": null,
+            "evidence_ids": [
+                "CHANGE-003-01"
+            ],
+            "observations": [
+                "id='CHANGE-003-01' timestamp=datetime.datetime(2026, 9, 21, 14, 30, tzinfo=TzInfo(0)) service='order-worker' commit_sha='2c84ef5' files=['src/order/logging.py'] description='Improved order processing diagnostic logging' diff='- logger.info(\"Processing order\")\\n+ logger.info(\"Processing order %s\", order_id)'"
+            ],
+            "reasoning": "The unresolved question is whether the inventory timeouts seen in order-worker logs are due to a recent application change in inventory-service versus an ongoing operational issue. We already have strong symptom evidence: repeated inventory reservation timeouts, retry storms, high inventory p95 latency, and a growing queue. Recent code changes can reveal a regression, feature flag, or dependency call change that would explain the sudden slowdown more directly than additional metrics or logs. This is more discriminating than repeating the already-examined deployment history because code changes can surface the exact logic likely causing the timeout behavior even if no deployment was captured or the rollout was gradual."
+        },
+        {
+            "tool_name": "deployments",
+            "service": "order-worker",
+            "evidence_ids": [
+                "DEPLOY-003-01"
+            ],
+            "observations": [
+                "id='DEPLOY-003-01' timestamp=datetime.datetime(2026, 9, 21, 15, 0, tzinfo=TzInfo(0)) service='order-worker' version='v5.2.0' description='Order worker production deployment'"
+            ],
+            "reasoning": "The unresolved question is whether the backlog is driven only by a slow downstream dependency or whether a recent worker-side rollout introduced the retry/timeout behavior or reduced throughput. We already saw order-worker logs showing repeated inventory reservation timeouts and retries, plus high queue depth and low CPU, so the most useful new evidence is deployment history for order-worker. A recent deployment could explain a regression in the worker’s processing path, while no recent deployment would make a downstream inventory issue more likely. This is a different service/tool combination from the prior deployment lookup and should add discriminating evidence without repeating what we already know."
+        }
+    ],
+    "stop_reason": "duplicate_selection",
+    "stop_reasoning": "The unresolved question is whether the backlog is primarily caused by a downstream inventory-service regression or by worker/queue-side capacity issues. We already have strong evidence of repeated inventory reservation timeouts in order-worker logs and elevated inventory latency, but we have not yet checked inventory-service rollout history. A service-targeted deployment lookup for inventory-service is the most discriminating next step because it can confirm or rule out a recent change that would explain the timeout spike and retry storm. This is more useful than more worker logs or metrics right now, and it targets the suspected source rather than the service merely reporting the failure.",
+    "result": {
+        "incident_id": "INC-003",
+        "root_cause": "A downstream dependency used during asynchronous order processing — specifically inventory reservation — was timing out repeatedly, causing order-worker retries and reducing processing throughput, which in turn increased the order-processing backlog.",
+        "affected_service": "order-worker",
+        "evidence_ids": [
+            "METRIC-003-01",
+            "METRIC-003-02",
+            "METRIC-003-03",
+            "LOG-003-02",
+            "LOG-003-03",
+            "LOG-003-04",
+            "LOG-003-05",
+            "LOG-003-06",
+            "LOG-003-07",
+            "LOG-003-08",
+            "LOG-003-09",
+            "LOG-003-10"
+        ],
+        "explanation": "The investigation showed a large and growing queue depth on order-worker (METRIC-003-01) while worker CPU remained low (METRIC-003-03), which argues against worker saturation as the primary cause. At the same time, inventory-service showed elevated p95 latency (METRIC-003-02), and order-worker logs repeatedly reported inventory reservation request timeouts followed by retries (LOG-003-02 through LOG-003-10). This pattern indicates that asynchronous order processing was being slowed by a downstream dependency timing out, leading to retries, lower effective throughput, and backlog growth. The under-provisioned/unhealthy worker hypothesis was rejected, and queue/broker lag was not directly evidenced in the gathered data.",
+        "confidence": 0.97
+    },
+    "latency_ms": 15667.24208300002,
+    "input_tokens": 15285,
+    "output_tokens": 1632,
+    "llm_calls": 9,
+    "estimated_cost_usd": 0.018807749999999998,
+    "timestamp": "2026-09-26T19:16:32.271409Z"
+}

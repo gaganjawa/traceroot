@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-002",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.20474258731775663,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The expected root cause is specific: a payment-service v3.7.0 request-mapping change incorrectly serialized the currency field, which led the payment provider to reject authorization requests. The actual output only broadly points to the payment authorization path and lists two possible causes—request mapping/serialization issues or external provider validation rejection—while explicitly saying there is insufficient evidence to confirm one. Although it partially overlaps with the payment-service mapping/provider rejection theme, it does not identify the same underlying issue with the v3.7.0 currency-field serialization defect."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output aligns perfectly with the retrieval context."
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response fully addresses the question with no irrelevant content, so it is as relevant as possible."
+        }
+    ],
+    "execution": {
+        "latency_ms": 2386.630042001343,
+        "input_tokens": 870,
+        "output_tokens": 208,
+        "total_tokens": 1078,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.0015885
+    }
+}

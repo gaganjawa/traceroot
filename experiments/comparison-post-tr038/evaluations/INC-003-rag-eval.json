@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-003",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output matches the Expected Output’s root cause: both identify inventory-service request timeouts/latency as the downstream issue affecting order-worker, leading to retries and degraded asynchronous order processing. Although phrased differently, the underlying cause and impact align semantically, including the dependency on inventory-service and the retry-driven throughput/backlog problem."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output aligns fully with the retrieval context. Great job!"
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response stays fully focused on the incident question and includes no irrelevant statements, so it is perfectly relevant."
+        }
+    ],
+    "execution": {
+        "latency_ms": 2653.977624999243,
+        "input_tokens": 844,
+        "output_tokens": 211,
+        "total_tokens": 1055,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.0015825000000000001
+    }
+}

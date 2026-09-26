@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-001",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.1,
+            "passed": false,
+            "evaluator_type": "deepeval",
+            "reason": "The expected root cause is specific: checkout-service database connection pool max size was reduced from 100 to 20, leading to connection contention and checkout timeouts. The actual output does not identify that concrete mechanism or configuration change; it states there is insufficient evidence and offers multiple possibilities, including payment-service latency or another dependency slowdown. Although it mentions possible database connection pool saturation, it does not capture the same underlying cause or certainty."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions; the actual output aligns fully with the retrieval context. Great job!"
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response is fully relevant to the question and contains no irrelevant statements. It directly addresses the cause of incident INC-001 without adding unrelated content."
+        }
+    ],
+    "execution": {
+        "latency_ms": 3033.703624998452,
+        "input_tokens": 843,
+        "output_tokens": 205,
+        "total_tokens": 1048,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.00155475
+    }
+}

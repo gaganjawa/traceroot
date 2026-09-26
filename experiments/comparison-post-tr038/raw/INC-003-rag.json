@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-003",
+    "approach": "rag_baseline",
+    "model": "gpt-5.4-mini",
+    "top_k": 3,
+    "retrieved_knowledge": [
+        {
+            "chunk_id": "order-processing-runbook.md::0",
+            "source": "order-processing-runbook.md",
+            "score": 0.6536438135274286
+        },
+        {
+            "chunk_id": "architecture.md::0",
+            "source": "architecture.md",
+            "score": 0.46624997244459354
+        },
+        {
+            "chunk_id": "checkout-runbook.md::0",
+            "source": "checkout-runbook.md",
+            "score": 0.4415572753424988
+        }
+    ],
+    "result": {
+        "incident_id": "INC-003",
+        "root_cause": "Most likely elevated latency or repeated timeouts in the order-worker's downstream dependency on inventory-service, causing retries and reduced throughput in asynchronous order processing.",
+        "affected_service": "order-worker",
+        "evidence_ids": [],
+        "explanation": "The incident description says orders are accepted successfully but asynchronous processing is delayed, with a growing backlog and delayed confirmations. The architecture and runbook both point to the asynchronous path after order acceptance, specifically the order queue → order-worker → inventory-service → notification-service flow. The order-processing runbook notes that high inventory-service latency can reduce worker throughput even when worker CPU remains normal, and repeated dependency timeouts can trigger retries that further increase queue depth. There is no supplied evidence of a checkout-service or payment-service problem, and a recent deployment would only be a correlation signal, not proof. Based on the available information, the strongest candidate is a slowdown in order-worker processing caused by inventory-service latency or timeouts, but this is not confirmed by direct metrics in the prompt.",
+        "confidence": 0.82
+    },
+    "latency_ms": 2653.977624999243,
+    "input_tokens": 844,
+    "output_tokens": 211,
+    "llm_calls": 1,
+    "estimated_cost_usd": 0.0015825000000000001,
+    "timestamp": "2026-09-26T19:16:16.603048Z"
+}

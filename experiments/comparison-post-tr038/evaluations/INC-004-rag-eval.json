@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-004",
+    "approach": "rag_baseline",
+    "metrics": [
+        {
+            "name": "Root Cause Accuracy",
+            "score": 0.7794462785358259,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The Actual Output identifies the same general issue area as the Expected Output: intermittent GetAds/ad-service failures rather than checkout or payment systems. It correctly captures the underlying mechanism as a downstream/resource-related problem affecting GetAds requests. However, it does not mention the specific stated cause from the Expected Output—the enabled adFailure fault scenario—and instead says there is insufficient evidence for a confirmed root cause, so the match is only partial rather than exact."
+        },
+        {
+            "name": "Faithfulness",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because there are no contradictions, so the actual output appears fully consistent with the retrieval context. Great job!"
+        },
+        {
+            "name": "Relevancy",
+            "score": 1.0,
+            "passed": true,
+            "evaluator_type": "deepeval",
+            "reason": "The score is 1.00 because the response is fully relevant to the question and contains no irrelevant statements. It directly addresses what caused incident INC-004, so it cannot reasonably be higher."
+        }
+    ],
+    "execution": {
+        "latency_ms": 2960.0454999999783,
+        "input_tokens": 880,
+        "output_tokens": 187,
+        "total_tokens": 1067,
+        "llm_calls": 1,
+        "tool_calls": 0,
+        "investigation_steps": null,
+        "estimated_cost_usd": 0.0015015
+    }
+}

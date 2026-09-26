@@ -1,0 +1,37 @@
+{
+    "incident_id": "INC-002",
+    "approach": "rag_baseline",
+    "model": "gpt-5.4-mini",
+    "top_k": 3,
+    "retrieved_knowledge": [
+        {
+            "chunk_id": "payment-runbook.md::0",
+            "source": "payment-runbook.md",
+            "score": 0.6341433633873668
+        },
+        {
+            "chunk_id": "checkout-runbook.md::0",
+            "source": "checkout-runbook.md",
+            "score": 0.48486012631515657
+        },
+        {
+            "chunk_id": "architecture.md::0",
+            "source": "architecture.md",
+            "score": 0.44705986306670953
+        }
+    ],
+    "result": {
+        "incident_id": "INC-002",
+        "root_cause": "Insufficient evidence to confirm a specific root cause; the incident most likely originated in the payment authorization path, with likely candidates being payment-service request mapping/serialization issues or an external payment provider validation rejection.",
+        "affected_service": "payment-service",
+        "evidence_ids": [],
+        "explanation": "The reported symptom is that checkout sessions can be created, but some payments fail during authorization. Per the architecture, that points to the checkout-service successfully initiating the flow and the failure occurring in payment-service or at the external payment provider. The payment runbook says authorization failures with HTTP 4xx responses generally indicate the provider received the request but rejected it, and advises inspecting provider error messages and recent changes to request serialization or field mapping for fields such as amount, currency, merchant identifier, and payment method. However, no provider response codes, validation messages, latency data, or deployment/configuration evidence were provided, so the specific cause cannot be confirmed from the supplied information.",
+        "confidence": 0.34
+    },
+    "latency_ms": 2386.630042001343,
+    "input_tokens": 870,
+    "output_tokens": 208,
+    "llm_calls": 1,
+    "estimated_cost_usd": 0.0015885,
+    "timestamp": "2026-09-26T19:15:32.232911Z"
+}
