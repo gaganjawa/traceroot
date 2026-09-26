@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from traceroot.agent.investigation import ToolSelection, investigate
+from traceroot.agent.investigation import ToolSelection, build_prompt, investigate
 from traceroot.agent.state import (
     Hypothesis,
     InvestigationState,
@@ -532,3 +532,210 @@ def test_investigate_accumulates_llm_usage_across_selections(
     assert usage.output_tokens == 90
     assert usage.total_tokens == 540
     assert usage.llm_calls == 2
+
+
+def test_build_prompt_treats_suspected_services_as_leads():
+    prompt = " ".join(build_prompt(create_test_state()).split())
+
+    assert "checkout-service" in prompt
+    assert "Checkout requests are slow and timing out." in prompt
+    assert "Database connection exhaustion" in prompt
+    assert (
+        "Treat suspected_services and current hypotheses as leads, not confirmed causes"
+        in prompt
+    )
+    assert "or restrictions on which services to investigate" in prompt
+    assert "distinguish the service reporting an error from its source" in prompt
+
+
+def test_build_prompt_discourages_redundant_exploration():
+    prompt = " ".join(build_prompt(create_test_state()).split())
+
+    assert (
+        "Do not repeat a tool/service combination already present in tool history"
+        in prompt
+    )
+    assert "Check the full history, including empty calls" in prompt
+    assert "changing between service-filtered and all-service queries" in prompt
+    assert "explain what new evidence the wider scope is likely to add" in prompt
+    assert "Prefer unexplored evidence sources likely to discriminate" in prompt
+    assert "support or contradict a hypothesis" in prompt
+
+
+@patch("builtins.open")
+@patch("pathlib.Path.read_text")
+def test_build_prompt_does_not_load_ground_truth(mock_read_text, mock_open):
+    state = create_test_state()
+    prompt = build_prompt(state)
+
+    mock_read_text.assert_not_called()
+    mock_open.assert_not_called()
+    assert "ground_truth" not in prompt
+    assert "supporting_evidence_ids" not in prompt
+    assert "INC-TEST" in prompt
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_prompts_to_broaden_after_empty_targeted_result(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    mock_client = mock_get_llm_client.return_value
+    mock_client.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS, "checkout-service"),
+        create_mock_llm_response(ToolName.LOGS, None),
+    ]
+    mock_execute_tool.side_effect = [[], [MagicMock(id="LOG-OTHER")]]
+
+    result = investigate(create_test_state(), max_tool_calls=2)
+
+    second_prompt = " ".join(
+        mock_client.responses.parse.call_args_list[1].kwargs["input"].split()
+    )
+    assert (
+        "After a service-targeted call returns no evidence, broaden service scope"
+        in second_prompt
+    )
+    assert (
+        "consider service=None or another service supported by the symptoms"
+        in second_prompt
+    )
+    assert "An empty result does not confirm or rule out a cause" in second_prompt
+    assert "service='checkout-service'" in second_prompt
+    assert "evidence_ids=[]" in second_prompt
+    assert "observations=[]" in second_prompt
+    mock_execute_tool.assert_called_with(
+        tool_name=ToolName.LOGS,
+        incident_id="INC-TEST",
+        service=None,
+    )
+    assert result.evidence_ids == ["LOG-OTHER"]
+    assert result.stop_reason == "tool_budget_exhausted"
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_stops_before_executing_duplicate_selection(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    mock_client = mock_get_llm_client.return_value
+    mock_client.responses.parse.return_value = create_mock_llm_response(
+        ToolName.LOGS,
+        "checkout-service",
+    )
+    mock_execute_tool.return_value = [MagicMock(id="LOG-TEST-01")]
+
+    result = investigate(create_test_state(), max_tool_calls=6)
+
+    assert result.stop_reason == "duplicate_selection"
+    assert mock_client.responses.parse.call_count == 2
+    mock_execute_tool.assert_called_once()
+    assert len(result.tool_history) == 1
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_broadens_same_service_after_empty_targeted_result(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    mock_client = mock_get_llm_client.return_value
+    mock_client.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS, "checkout-service"),
+        create_mock_llm_response(ToolName.METRICS, "checkout-service"),
+    ]
+    mock_execute_tool.side_effect = [[], [MagicMock(id="METRIC-OTHER")]]
+
+    result = investigate(create_test_state(), max_tool_calls=2)
+
+    assert mock_execute_tool.call_args_list[1].kwargs == {
+        "tool_name": ToolName.METRICS,
+        "incident_id": "INC-TEST",
+        "service": None,
+    }
+    assert result.tool_history[1].tool_name == "metrics"
+    assert result.tool_history[1].service is None
+    assert result.tool_history[1].evidence_ids == ["METRIC-OTHER"]
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_keeps_same_service_after_nonempty_targeted_result(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    mock_client = mock_get_llm_client.return_value
+    mock_client.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS, "checkout-service"),
+        create_mock_llm_response(ToolName.METRICS, "checkout-service"),
+    ]
+    mock_execute_tool.side_effect = [
+        [MagicMock(id="LOG-TEST-01")],
+        [MagicMock(id="METRIC-TEST-01")],
+    ]
+
+    result = investigate(create_test_state(), max_tool_calls=2)
+
+    assert mock_execute_tool.call_args_list[1].kwargs["service"] == "checkout-service"
+    assert result.tool_history[1].service == "checkout-service"
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_preserves_different_service_after_empty_targeted_result(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    mock_client = mock_get_llm_client.return_value
+    mock_client.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS, "checkout-service"),
+        create_mock_llm_response(ToolName.METRICS, "payment-service"),
+    ]
+    mock_execute_tool.side_effect = [[], [MagicMock(id="METRIC-PAYMENT")]]
+
+    result = investigate(create_test_state(), max_tool_calls=2)
+
+    assert mock_execute_tool.call_args_list[1].kwargs["service"] == "payment-service"
+    assert result.tool_history[1].service == "payment-service"
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_preserves_global_selection_after_empty_targeted_result(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    mock_client = mock_get_llm_client.return_value
+    mock_client.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS, "checkout-service"),
+        create_mock_llm_response(ToolName.METRICS, None),
+    ]
+    mock_execute_tool.side_effect = [[], [MagicMock(id="METRIC-GLOBAL")]]
+
+    result = investigate(create_test_state(), max_tool_calls=2)
+
+    assert mock_execute_tool.call_args_list[1].kwargs["service"] is None
+    assert result.tool_history[1].service is None
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_keeps_consecutive_empty_result_guardrail(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    mock_client = mock_get_llm_client.return_value
+    mock_client.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS, "checkout-service"),
+        create_mock_llm_response(ToolName.LOGS, None),
+    ]
+    mock_execute_tool.return_value = []
+
+    result = investigate(create_test_state(), max_tool_calls=6)
+
+    assert result.stop_reason == "consecutive_empty_results"
+    assert mock_client.responses.parse.call_count == 2
+    assert mock_execute_tool.call_count == 2
+    assert len(result.tool_history) == 2

@@ -42,8 +42,26 @@ def build_prompt(state: InvestigationState) -> str:
     - code_changes: recent code changes, optionally filtered by service
     
     Use service=None to query across all services.
+
+    Treat suspected_services and current hypotheses as leads, not confirmed causes
+    or restrictions on which services to investigate. Use incident symptoms and
+    observations to distinguish the service reporting an error from its source.
+
+    After a service-targeted call returns no evidence, broaden service scope:
+    consider service=None or another service supported by the symptoms or
+    observations, rather than continuing to probe only the same suspected service.
+    An empty result does not confirm or rule out a cause.
     
     Do not repeat a tool/service combination already present in tool history.
+    Check the full history, including empty calls, before selecting. Avoid
+    redundant exploration: changing between service-filtered and all-service
+    queries of the same tool can return evidence already gathered. Broaden only
+    when you can explain what new evidence the wider scope is likely to add.
+
+    Prefer unexplored evidence sources likely to discriminate between current
+    hypotheses over collecting more examples of an already observed symptom.
+    In your reasoning, identify the unresolved question and explain how the
+    selected tool and service scope could support or contradict a hypothesis.
     
     Set stop=true only when further tool calls are unlikely to add useful evidence.
     When stop=true, do not select a tool or service.
@@ -100,9 +118,21 @@ def investigate(
         if selection.tool_name is None:
             raise RuntimeError("LLM must select a tool when stop is false.")
 
+        selected_service = selection.service
+
+        if state.tool_history:
+            previous_call = state.tool_history[-1]
+
+            if (
+                previous_call.service is not None
+                and not previous_call.evidence_ids
+                and selected_service == previous_call.service
+            ):
+                selected_service = None
+
         current_tool_key = (
             selection.tool_name,
-            selection.service,
+            selected_service,
         )
 
         if current_tool_key in attempted_tool_keys:
@@ -113,7 +143,7 @@ def investigate(
         tool_results = execute_tool(
             tool_name=selection.tool_name,
             incident_id=state.incident.id,
-            service=selection.service,
+            service=selected_service,
         )
 
         new_evidence_ids = [
@@ -125,7 +155,7 @@ def investigate(
         state.tool_history.append(
             ToolCallRecord(
                 tool_name=selection.tool_name.value,
-                service=selection.service,
+                service=selected_service,
                 evidence_ids=[entry.id for entry in tool_results],
                 observations=[str(entry) for entry in tool_results],
                 reasoning=selection.reasoning,
