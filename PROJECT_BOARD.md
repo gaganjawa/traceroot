@@ -536,9 +536,9 @@ Evaluation note:
 | TR-029 | Evidence Precision & Recall | 1h | ✅ DONE |
 | TR-030 | DeepEval Faithfulness | 1h | ✅ DONE |
 | TR-031 | DeepEval Relevancy | 1h | ✅ DONE |
-| TR-032 | Agent Trace Evaluator | 1.5h | ⬜ TODO |
-| TR-033 | Efficiency, Cost & Latency Instrumentation | 1.5h | ⬜ TODO |
-| TR-034 | Unified Evaluation Runner | 2h | ⬜ TODO |
+| TR-032 | Agent Trace Evaluator | 1.5h | ✅ DONE |
+| TR-033 | Efficiency, Cost & Latency Instrumentation | 1.5h | ✅ DONE |
+| TR-034 | Unified Evaluation Runner | 2h | ✅ DONE |
 
 ### TR-027 — DeepEval Setup
 
@@ -641,60 +641,118 @@ Reason: The response directly addressed the checkout incident question with no i
 
 ### TR-032 — Agent Trace Evaluator
 
-Goal:
-- Evaluate investigation behavior independently from final RCA quality
+Completed:
+- Added deterministic agent-trace evaluation
+- Tool Efficiency = unique `(tool_name, service)` selections / total tool calls
+- Empty Tool Rate = tool calls with no evidence IDs / total tool calls
+- Evidence Coverage = evaluator-known supporting evidence gathered / total supporting evidence
+- Stop Quality based on investigation stop reason
+- Trace-quality evaluation kept independent from final RCA correctness
+- Uses evaluator-only `GroundTruth` only for supporting-evidence coverage
+- Full project validation: **225 tests passing**
 
-Candidate deterministic metrics:
-- number of tool calls
-- unique tool/service selections
-- duplicate-selection attempts
-- empty-result calls
-- tool-budget exhaustion / explicit stopping
-- evidence gathered per call
-- useful evidence progression
-- evaluator-only supporting-evidence coverage
-- stop reason and potential premature stopping
+Smoke test on persisted INC-001 agent run:
 
-Known cases:
-- Earlier INC-001 run stopped on duplicate selection
-- TR-026A INC-001 run exhausted four-tool budget before deployment/code-change evidence
+```text
+Tool Efficiency: 1.0 — Passed
+Empty Tool Rate: 0.25 — Passed
+Evidence Coverage: 0.8 — Passed
+Stop Quality: 0.0 — Failed
+Stop reason: tool_budget_exhausted
+```
+
+Interpretation:
+- The investigation avoided duplicate tool/service selections
+- One of four tool calls returned no evidence
+- Four of five evaluator-known supporting evidence IDs were gathered
+- The investigation exhausted its tool budget before reaching the remaining evidence
+- This result is retained for later comparative and failure analysis rather than hidden
 
 ### TR-033 — Efficiency, Cost & Latency Instrumentation
 
-Goal:
-- Explicitly satisfy capstone evaluation requirements for cost and latency
+Completed:
+- Added deterministic LLM cost calculation from token counts and supplied per-million-token prices
+- Added `ExecutionMetrics` support for:
+  - latency
+  - LLM calls
+  - tool calls
+  - input tokens
+  - output tokens
+  - total tokens
+  - estimated cost
+  - investigation steps
+- Added non-negative Pydantic validation for execution metrics
+- Pricing is passed into the cost calculator rather than hard-coded
+- Unavailable runtime token/cost values are not fabricated
+- Full project validation: **232 tests passing**
 
-Measure:
-- end-to-end wall-clock latency
-- LLM call count
-- operational tool-call count
-- input/output/total tokens where exposed
-- estimated model cost
+Smoke test:
 
-Requirements:
-- Record model name and documented pricing assumptions
-- Do not fabricate unavailable token counts or costs
+```text
+Latency ms: 850.0
+LLM calls: 3
+Tool calls: 4
+Input tokens: 1200
+Output tokens: 300
+Total tokens: 1500
+Estimated cost USD: 0.0024
+```
+
+Important:
+- This smoke validates the calculation and execution-metrics contract
+- Real comparative token/cost reporting still depends on wiring actual runtime usage into experiment execution
+- Model pricing assumptions must be documented when final TR-036 results are produced
 
 ### TR-034 — Unified Evaluation Runner
 
-Goal:
-- Run RAG and Agent through one reproducible evaluation workflow on the same frozen dataset
+Completed:
+- Added one evaluation workflow for persisted RAG experiment records
+- Added one evaluation workflow for persisted Agent experiment records
+- RAG evaluation runs:
+  - Root-Cause Accuracy
+  - Faithfulness
+  - Relevancy
+- Agent evaluation runs:
+  - Root-Cause Accuracy
+  - Evidence Precision
+  - Evidence Recall
+  - Faithfulness
+  - Relevancy
+  - Tool Efficiency
+  - Empty Tool Rate
+  - Evidence Coverage
+  - Stop Quality
+- RAG faithfulness receives the actual retrieved context explicitly because `BaselineExperimentRecord` stores provenance rather than full chunk text
+- Agent faithfulness context is reconstructed from persisted `tool_history[*].observations`
+- Ground truth is passed only to evaluators that require it
+- Unified results are returned as `EvaluationResult`
+- Existing execution latency and tool/investigation-step counts are preserved
+- Full project validation: **239 tests passing**
 
-Evaluate:
-- RCA Accuracy
-- Faithfulness
-- Relevancy
-- Evidence Precision / Recall
-- Agent Trace Metrics
-- Cost / Latency
+Smoke test:
 
-Requirements:
-- Ground truth stays evaluator-only
-- Persist raw outputs before scoring
-- Preserve per-incident metrics and evaluator reasons
-- Preserve experiment configuration
-- Record failures instead of dropping them
-- Aggregate only after individual results are retained
+```text
+RAG
+Root Cause Accuracy 1.0 True
+Faithfulness 1.0 True
+Relevancy 1.0 True
+
+AGENT
+Root Cause Accuracy 1.0 True
+Evidence Precision 1.0 True
+Evidence Recall 1.0 True
+Faithfulness 1.0 True
+Relevancy 1.0 True
+Tool Efficiency 1.0 True
+Empty Tool Rate 0.0 True
+Evidence Coverage 1.0 True
+Stop Quality 1.0 True
+```
+
+Important:
+- The smoke validates unified evaluator orchestration
+- It is not the final RAG-vs-Agent comparative experiment
+- Final measured comparison remains TR-036 on the frozen dataset
 
 ---
 
@@ -1001,9 +1059,6 @@ The UI is a presentation and intake layer only; core investigation logic must re
 
 ## ⬜ Next Up
 
-- TR-032 — Agent Trace Evaluator
-- TR-033 — Efficiency, Cost & Latency Instrumentation
-- TR-034 — Unified Evaluation Runner
 - TR-035 — Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios
 
 ## ✅ Done
@@ -1040,6 +1095,9 @@ The UI is a presentation and intake layer only; core investigation logic must re
 - TR-029 — Evidence Precision & Recall
 - TR-030 — DeepEval Faithfulness
 - TR-031 — DeepEval Relevancy
+- TR-032 — Agent Trace Evaluator
+- TR-033 — Efficiency, Cost & Latency Instrumentation
+- TR-034 — Unified Evaluation Runner
 
 ## 🟣 Stretch
 
@@ -1079,14 +1137,16 @@ The UI is a presentation and intake layer only; core investigation logic must re
 
 # Current Focus
 
-**TR-032 — Agent Trace Evaluator**, alongside progressive work on TR-040 documentation.
+**TR-035 — Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios**, alongside progressive work on TR-040 documentation.
 
 Current state:
-- TR-001 through TR-031 complete
-- **218 tests passing**
+- TR-001 through TR-034 complete
+- **239 tests passing**
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
-- DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, and relevancy evaluators complete
+- DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
+- Efficiency/cost/latency metric contracts complete
+- Unified RAG/Agent evaluation runner complete
 - Three current synthetic incidents
 - OpenTelemetry-derived final dataset expansion pending
 - Comparative RAG-vs-Agent evaluation pending
@@ -1103,23 +1163,20 @@ Root-Cause Accuracy            ✅
 Evidence Precision / Recall    ✅
 Faithfulness                   ✅
 Relevancy                      ✅
-Agent Trace Quality            ⬜
-Cost / Latency / Efficiency    ⬜
-Unified Evaluation Runner      ⬜
+Agent Trace Quality            ✅
+Cost / Latency / Efficiency    ✅
+Unified Evaluation Runner      ✅
 RAG vs Agent Experiment        ⬜
 Failure / Error Analysis       ⬜
 ```
 
 Next:
-1. Implement agent-trace evaluation (TR-032).
-2. Add cost, token, tool-call, and latency instrumentation (TR-033).
-3. Build the unified evaluation runner (TR-034).
-4. Verify, expand, audit, and freeze the final six-incident dataset (TR-035).
-5. Run RAG vs Agent comparative experiments (TR-036).
-6. Perform failure/error analysis (TR-037).
-7. Make evidence-driven improvements and re-evaluate only if time permits (TR-038–TR-039).
-8. Complete `CAPSTONE_REPORT.md`, architecture/results, and README (TR-040).
-9. Record and publish the demo video / public demo URL (TR-041).
+1. Verify, expand, audit, and freeze the final six-incident dataset (TR-035).
+2. Run RAG vs Agent comparative experiments (TR-036).
+3. Perform failure/error analysis (TR-037).
+4. Make evidence-driven improvements and re-evaluate only if time permits (TR-038–TR-039).
+5. Complete `CAPSTONE_REPORT.md`, architecture/results, and README (TR-040).
+6. Record and publish the demo video / public demo URL (TR-041).
 
 Known items to address during evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
@@ -1128,6 +1185,7 @@ Known items to address during evaluation:
 - Baseline prompts use title/description; agent prompts include richer incident context, notably `suspected_services`
 - Guardrail stops and valid evidence IDs alone do not establish a correct or complete RCA
 - Ground-truth supporting-evidence sets must be audited before final precision/recall reporting
+- Real token/cost reporting still requires actual runtime usage capture rather than synthetic smoke-test values
 
 Extended scope after the core capstone:
 - TR-044 — Live Incident Intake
