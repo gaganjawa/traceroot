@@ -5,6 +5,7 @@ description = "Evidence-grounded AI system for production incident investigation
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "mcp[cli]>=2.2.0",
     "openai>=3.17.0",
     "pydantic>=2.13.5",
     "python-dotenv>=1.2.3",
