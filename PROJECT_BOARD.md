@@ -19,9 +19,9 @@ Research Question:
 | Epic 2 — RAG Baseline | ✅ DONE |
 | Epic 3 — Operational Evidence Tools | ✅ DONE |
 | Epic 4 — Agentic Investigation | ✅ DONE |
-| Epic 5 — Evaluation Framework | 🟡 IN PROGRESS |
-| Epic 6 — Comparative Experiments | ⬜ TODO |
-| Epic 7 — Delivery | 🟡 IN PROGRESS |
+| Epic 5 — Evaluation Framework | ✅ DONE |
+| Epic 6 — Comparative Experiments | ✅ DONE |
+| Epic 7 — Delivery | ✅ DONE |
 | Epic 8 — MCP Integration | 🟣 STRETCH |
 | Epic 9 — Extended Production Scope | 🔵 EXTENDED |
 
@@ -416,7 +416,7 @@ Completed:
 - Mocked LLM verification tests
 - Real INC-001 hypothesis verification manually verified
 
-Known evaluation-phase improvement:
+Known first-release limitations:
 - Verification currently does not require evidence IDs for each assessment
 - Hypothesis descriptions are currently used for matching rather than stable hypothesis IDs
 
@@ -472,7 +472,7 @@ Completed:
 Grounding limit:
 - Evidence-ID validation establishes citation membership, not causal correctness
 - The current validator does not require a nonempty final citation list when evidence was gathered
-- Root-cause accuracy and evidence quality remain evaluation work
+- Root-cause accuracy and evidence quality are assessed separately by the completed evaluation framework
 
 ### TR-026 — Investigation Trace Persistence
 
@@ -597,7 +597,7 @@ Recall: 1.0
 Important:
 - Smoke used a manually complete INC-001 evidence set
 - It validates the metric, not agent performance
-- Supporting-evidence lists must be audited and frozen before final reporting
+- Supporting-evidence lists were reviewed and frozen for final reporting; label-completeness limitations are documented in TR-037
 
 ### TR-030 — DeepEval Faithfulness
 
@@ -700,8 +700,8 @@ Estimated cost USD: 0.0024
 
 Important:
 - This smoke validates the calculation and execution-metrics contract
-- Real comparative token/cost reporting still depends on wiring actual runtime usage into experiment execution
-- Model pricing assumptions must be documented when final TR-036 results are produced
+- Actual runtime usage is now captured in experiment execution and persisted in comparative artifacts
+- Runtime cost scope and pricing assumptions are documented with the final comparison results
 
 ### TR-034 — Unified Evaluation Runner
 
@@ -752,7 +752,7 @@ Stop Quality 1.0 True
 Important:
 - The smoke validates unified evaluator orchestration
 - It is not the final RAG-vs-Agent comparative experiment
-- Final measured comparison remains TR-036 on the frozen dataset
+- The final measured comparison was completed in TR-036 on the frozen dataset
 
 ---
 
@@ -760,29 +760,35 @@ Important:
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-035 | Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios | 3h | ⬜ TODO |
-| TR-036 | Run RAG vs Agent Evaluation | 1h | ⬜ TODO |
-| TR-037 | Failure & Error Analysis | 1h | ⬜ TODO |
-| TR-038 | Evidence-Driven Improvement | 1.5h | ⬜ TODO |
-| TR-039 | Re-evaluate & Compare | 1h | ⬜ TODO |
+| TR-035 | Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios | 3h | ✅ DONE |
+| TR-036 | Run RAG vs Agent Evaluation | 1h | ✅ DONE |
+| TR-037 | Failure & Error Analysis | 1h | ✅ DONE |
+| TR-038 | Evidence-Driven Improvement | 1.5h | ✅ DONE |
+| TR-039 | Re-evaluate & Compare | 1h | ✅ DONE |
 
 ### TR-035 — Expand & Freeze Final Evaluation Dataset
+
+Completed:
+- Frozen six-incident evaluation dataset complete: INC-001 through INC-006
+- Scenario provenance documented in `docs/DATASET_PROVENANCE.md`
+- Ground truth remains evaluator-only
+- Input-parity and evidence-observability limitations are documented in `docs/CAPSTONE_REPORT.md` and `docs/TR037_FAILURE_ANALYSIS.md`
 
 Goal:
 
 Combine the existing controlled synthetic incidents with realistic failure scenarios derived from the OpenTelemetry Demo / Astronomy Shop, then freeze the dataset for comparative evaluation.
 
-Retain the current baseline cases:
+Retained baseline cases:
 - INC-001 — checkout database connection-pool regression
 - INC-002 — payment-service currency serialization regression
 - INC-003 — order-worker backlog caused by inventory timeout
 
-Planned additions, subject to scenario verification and evidence review:
+Completed synthetic/adapted additions:
 - INC-004 — Ad service failure: downstream/service dependency failure
 - INC-005 — Email service memory leak: progressive resource degradation
 - INC-006 — Cart service failure: functional downstream-service failure
 
-The additions are not yet present. Use OpenTelemetry Demo as a scenario source and evidence generator, and document whether each resulting fixture is captured, adapted, or synthesized.
+All six incidents are present and frozen. OpenTelemetry Demo supplies scenario provenance; the adapted/synthesized evidence is documented in `docs/DATASET_PROVENANCE.md` and is not claimed to be captured production telemetry.
 
 Preserve the existing data contract:
 
@@ -812,6 +818,11 @@ Acceptance criteria:
 
 ### TR-036 — Run RAG vs Agent Evaluation
 
+Completed:
+- Initial RAG vs Agent comparison completed on the frozen six-incident dataset
+- Raw outputs, evaluations, and summary persisted under `experiments/comparison/`
+- Measured results and runtime cost/latency scope documented in `docs/CAPSTONE_REPORT.md`
+
 Goal:
 - Run the mandatory RAG-vs-Agent comparative experiment on the same frozen incidents
 
@@ -835,6 +846,10 @@ Requirements:
 
 ### TR-037 — Failure & Error Analysis
 
+Completed:
+- Failure analysis completed from the saved comparison artifacts
+- Findings and evaluation limitations documented in `docs/TR037_FAILURE_ANALYSIS.md`
+
 Analyze:
 - incorrect/partial/broad-but-incomplete RCA
 - unsupported RCA
@@ -848,12 +863,25 @@ Classify where possible as model reasoning, retrieval, tool/evidence, insufficie
 
 ### TR-038 — Evidence-Driven Improvement
 
+Completed:
+- Evidence-gathering improvement completed
+- Suspected services treated as leads, not guaranteed causes
+- Deterministic broadening guardrail added: after an empty targeted result, a next selection targeting the same service uses `service=None`
+- Duplicate detection and trace recording use the actual executed tool/service pair
+- Frozen evaluation data remained unchanged
+
 Goal:
 - Make only improvements justified by measured failure modes
 - Keep the frozen evaluation dataset unchanged
 - Avoid architecture changes without evidence
 
 ### TR-039 — Re-evaluate & Compare
+
+Completed:
+- Post-improvement comparison completed against the same frozen dataset
+- Raw outputs, evaluations, and summary persisted under `experiments/comparison-post-tr038/`
+- Findings documented in `docs/TR039_POST_IMPROVEMENT_EVALUATION.md`
+- TR-038 is not shown to improve RCA accuracy; deterministic evidence/trace metrics and direct trace inspection are the strongest evidence for the change
 
 Goal:
 - Re-run the improved system against the same frozen dataset
@@ -867,17 +895,18 @@ Goal:
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-040 | README + Architecture + Capstone Report + Results | 2.5h | 🟡 IN PROGRESS |
-| TR-041 | Demo Video / Public Demo | 1h | ⬜ TODO |
+| TR-040 | README + Architecture + Capstone Report + Results | 2.5h | ✅ DONE |
+| TR-041 | Demo Video / Public Demo | 1h | ✅ DONE |
 
 ### TR-040 — README + Architecture + Capstone Report + Results
 
-Current deliverables:
+Completed deliverables:
 - [README](README.md)
 - [Architecture guide](docs/ARCHITECTURE.md)
-- `docs/CAPSTONE_REPORT.md` — pending
+- [Capstone report](docs/CAPSTONE_REPORT.md) — created
+- [System design document](docs/SYSTEM_DESIGN.md) — created
 
-`docs/ARCHITECTURE.md` must explicitly document:
+The finalized `docs/ARCHITECTURE.md` documents:
 - high-level, RAG, and agent architecture
 - investigation state and deterministic tool layer
 - evidence grounding and ground-truth isolation
@@ -889,23 +918,26 @@ Current deliverables:
 - operational tool choices and guardrails
 - file-backed evaluation surface vs future production adapters
 
-`docs/CAPSTONE_REPORT.md` must map directly to the official rubric:
+`docs/CAPSTONE_REPORT.md` covers the rubric areas:
 
 1. **Problem Definition** — scoping, clarity, research question, success criteria, limitations
 2. **Data Processing** — sources, normalization, evidence IDs, PII handling, guardrails, provenance, ground-truth isolation
 3. **System Design** — architecture, flows, tools, chunking, persistence, trade-offs
 4. **Evals** — task-specific metrics, error/failure handling, cost, latency, final RAG-vs-Agent results
 
-Remaining:
-- Create `CAPSTONE_REPORT.md`
-- Finalize architecture against the rubric
-- Add measured comparative results and failure/error analysis
-- Document frozen dataset/provenance and cost/latency results
-- Final consistency pass across README, architecture, and report
-
-Keep TR-040 in progress until real evaluation results are included.
+Completed:
+- README and architecture finalized
+- Capstone report and system design document created
+- Measured comparative results, limitations, and failure/error analysis documented
+- Frozen dataset/provenance and cost/latency results documented
+- First-release scope and future production evolution documented
 
 ### TR-041 — Demo Video / Public Demo
+
+Completed:
+- Demo video recorded and shared; the published demo link is in the [README Demo section](README.md#demo)
+- Public GitHub repository available for submission
+- Streamlit UI used as the demo/presentation layer over the existing investigation workflow
 
 Submission requires:
 - public project code URL
@@ -956,7 +988,7 @@ MCP must not delay the core experiment.
 |---|---|---:|---|
 | TR-044 | Live Incident Intake | 1.5h | 🔵 EXTENDED |
 | TR-045 | Live Evidence Integrations | 4h+ | 🔵 EXTENDED |
-| TR-046 | Simple Investigation UI | 2h | 🔵 EXTENDED |
+| TR-046 | Simple Investigation UI | 2h | ✅ DONE |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
 
@@ -1030,9 +1062,9 @@ Goal:
 
 Provide a lightweight interface for starting and observing an investigation.
 
-Minimum UI capabilities:
-- Start a new investigation from title, description, start time, and optional suspected service
-- Select an existing evaluation incident for demos
+Implemented Streamlit UI capabilities:
+- Accept new incident title, description, start time, and optional suspected service; without connected evidence, the current no-evidence guardrail prevents final RCA generation
+- Select an existing evaluation incident and start/view its investigation for demos
 - Display generated hypotheses and their statuses
 - Display tool calls and selected services
 - Display gathered evidence
@@ -1040,14 +1072,15 @@ Minimum UI capabilities:
 - Display final RCA, confidence, and cited evidence
 - Display or link to the persisted investigation trace
 
-Suggested first implementation:
-- Streamlit for a fast prototype
+Completed:
+- Streamlit UI implemented in `app.py` with existing investigation and evaluation helpers
+- Presentation/demo layer only; no live telemetry integration
 
 Possible later architecture:
 - FastAPI backend
 - React frontend
 
-The UI is a presentation and intake layer only; core investigation logic must remain in the existing TraceRoot modules.
+The UI is a presentation and input layer only; core investigation logic remains in the existing TraceRoot modules.
 
 ---
 
@@ -1055,11 +1088,7 @@ The UI is a presentation and intake layer only; core investigation logic must re
 
 ## 🟡 In Progress
 
-- TR-040 — README + Architecture + Capstone Report + Results
-
-## ⬜ Next Up
-
-- TR-035 — Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios
+No first-release tickets in progress.
 
 ## ✅ Done
 
@@ -1098,6 +1127,14 @@ The UI is a presentation and intake layer only; core investigation logic must re
 - TR-032 — Agent Trace Evaluator
 - TR-033 — Efficiency, Cost & Latency Instrumentation
 - TR-034 — Unified Evaluation Runner
+- TR-035 — Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios
+- TR-036 — Run RAG vs Agent Evaluation
+- TR-037 — Failure & Error Analysis
+- TR-038 — Evidence-Driven Improvement
+- TR-039 — Re-evaluate & Compare
+- TR-040 — README + Architecture + Capstone Report + Results
+- TR-041 — Demo Video / Public Demo
+- TR-046 — Simple Investigation UI
 
 ## 🟣 Stretch
 
@@ -1108,7 +1145,6 @@ The UI is a presentation and intake layer only; core investigation logic must re
 
 - TR-044 — Live Incident Intake
 - TR-045 — Live Evidence Integrations
-- TR-046 — Simple Investigation UI
 
 ---
 
@@ -1124,7 +1160,7 @@ The UI is a presentation and intake layer only; core investigation logic must re
 8. Evaluate agent behavior as well as final answers.
 9. Add complexity only when evaluation supports it.
 10. MCP is optional and must not delay the core evaluation.
-11. File-backed incident evidence is the reproducible evaluation surface; live incident intake, production evidence integrations, and UI work are extended scope and must not delay comparative evaluation.
+11. File-backed incident evidence is the reproducible evaluation surface; live incident intake and production evidence integrations remain extended scope. The completed Streamlit UI is a presentation/demo layer with no live telemetry integration.
 12. Final documentation must explicitly cover Problem Definition, Data Processing, System Design, and Evals.
 13. Cost and latency must be measured and reported, not merely discussed.
 14. Chunking strategy and operational tool choices must be documented in the system design document.
@@ -1137,22 +1173,27 @@ The UI is a presentation and intake layer only; core investigation logic must re
 
 # Current Focus
 
-**TR-035 — Expand & Freeze Final Evaluation Dataset using OpenTelemetry Demo scenarios**, alongside progressive work on TR-040 documentation.
+**First release / capstone version complete and ready for submission/release.**
 
 Current state:
-- TR-001 through TR-034 complete
-- **239 tests passing**
+- TR-001 through TR-041 complete, including TR-026A
+- TR-046 Simple Investigation UI complete
+- **364 tests passing**
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
-- Efficiency/cost/latency metric contracts complete
-- Unified RAG/Agent evaluation runner complete
-- Three current synthetic incidents
-- OpenTelemetry-derived final dataset expansion pending
-- Comparative RAG-vs-Agent evaluation pending
-- README and architecture drafts exist
-- `CAPSTONE_REPORT.md` pending
-- No measured agent-superiority claim has been made
+- Efficiency/cost/latency instrumentation and unified RAG/Agent evaluation runner complete
+- Frozen six-incident dataset complete: INC-001 through INC-006
+- Initial RAG vs Agent comparison complete
+- Failure analysis complete
+- TR-038 evidence-gathering improvement complete
+- Post-improvement evaluation complete
+- README and architecture complete
+- System design document and capstone report complete
+- Streamlit demo UI complete
+- Demo video recorded/shared; demo link published in README
+- Public first-release repository ready for capstone submission/release
+- No universal superiority or statistical significance claim; TR-038 is not shown to improve RCA accuracy
 
 Evaluation progress:
 
@@ -1166,28 +1207,30 @@ Relevancy                      ✅
 Agent Trace Quality            ✅
 Cost / Latency / Efficiency    ✅
 Unified Evaluation Runner      ✅
-RAG vs Agent Experiment        ⬜
-Failure / Error Analysis       ⬜
+RAG vs Agent Experiment        ✅
+Failure / Error Analysis       ✅
+Evidence-Driven Improvement    ✅
+Post-Improvement Evaluation    ✅
 ```
 
-Next:
-1. Verify, expand, audit, and freeze the final six-incident dataset (TR-035).
-2. Run RAG vs Agent comparative experiments (TR-036).
-3. Perform failure/error analysis (TR-037).
-4. Make evidence-driven improvements and re-evaluate only if time permits (TR-038–TR-039).
-5. Complete `CAPSTONE_REPORT.md`, architecture/results, and README (TR-040).
-6. Record and publish the demo video / public demo URL (TR-041).
+Next — optional post-release work:
 
-Known items to address during evaluation:
+These stretch/extended items are not required for the submitted first release.
+
+1. TR-042 — MCP Evidence Server (stretch)
+2. TR-043 — LangGraph ↔ MCP Integration (stretch)
+3. TR-044 — Live Incident Intake (extended)
+4. TR-045 — Live Evidence Integrations (extended)
+
+Known limitations retained after evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
 - Hypothesis-assessment reasoning is not retained in hypothesis state
 - Recall@5 has limited discrimination on the small knowledge corpus
 - Baseline prompts use title/description; agent prompts include richer incident context, notably `suspected_services`
 - Guardrail stops and valid evidence IDs alone do not establish a correct or complete RCA
-- Ground-truth supporting-evidence sets must be audited before final precision/recall reporting
-- Real token/cost reporting still requires actual runtime usage capture rather than synthetic smoke-test values
+- Supporting-evidence label completeness and hidden-trigger observability limitations are documented in TR-037
+- Recorded runtime token/cost reporting covers instrumented generation/investigation calls, not all-in embedding and evaluator costs
 
 Extended scope after the core capstone:
 - TR-044 — Live Incident Intake
 - TR-045 — Live Evidence Integrations
-- TR-046 — Simple Investigation UI
