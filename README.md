@@ -6,26 +6,11 @@ TraceRoot is an AI engineering capstone comparing two approaches to root-cause a
 
 > Can agentic evidence gathering improve root-cause identification and evidence grounding compared with knowledge-only RAG for software production incidents?
 
-## Current state — first release through TR-039
+## Demo
 
-TraceRoot includes a knowledge-only RAG baseline and an agentic investigator with deterministic logs, metrics, deployments, and code-change tools. The agent generates and verifies hypotheses, gathers operational evidence, and produces an RCA; investigation traces and results are persisted. Evaluation combines DeepEval with deterministic evidence and trace metrics, and runtime instrumentation records latency, token usage, and estimated cost.
+🎥 [Watch the TraceRoot Capstone Demo](https://drive.google.com/file/d/1UioGv0xEvZlbOhue6gxQy69zuQvwQzDG/view?usp=sharing)
 
-The first release evaluates RAG and Agent approaches on the same frozen six-incident dataset, includes pre- and post-TR-038 comparisons, and provides both CLI and Streamlit demos. See the [failure analysis](docs/TR037_FAILURE_ANALYSIS.md) and [post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md) for detailed methods, results, and limitations.
-
-## Two approaches
-
-| Approach | Input and evidence | Output |
-|---|---|---|
-| Knowledge-only RAG baseline | Incident title/description plus engineering knowledge retrieved from Qdrant | Structured RCA and separate retrieval provenance; operational `evidence_ids` remain empty |
-| Agentic investigation | Incident context, hypotheses, and selected logs, metrics, deployments, and code changes from local incident files | Structured RCA referencing gathered evidence, plus investigation trace |
-
-The agent does not retrieve the RAG knowledge corpus. Both approaches return `RCAResult`, and ground truth is evaluator-only: it is used for evaluation, never supplied to either approach at runtime. Inputs are not fully at parity: RAG retrieval uses the incident title and description, while the Agent receives richer incident context, including `suspected_services` when present.
-
-## Evaluation dataset
-
-The frozen evaluation set contains six incidents. `INC-001` to `INC-003` are controlled synthetic incidents; `INC-004` to `INC-006` are synthetic/adapted scenarios based on OpenTelemetry Demo / Astronomy Shop failure modes. They are not captured production traces.
-
-## Evaluation results
+## Key Results
 
 Initial six-incident comparison:
 
@@ -50,6 +35,34 @@ The improvement increased evidence gathering quality and stopping behavior, but 
 TR-038 is **not shown to improve RCA accuracy**: the post-improvement LLM-judged Agent RCA mean was lower in that single run (0.614 vs 0.771). Unchanged RAG scores also varied substantially between runs. The strongest evidence for TR-038 is therefore the deterministic trace/evidence metrics and manual trace inspection, not a single LLM-judge comparison.
 
 See [Architecture and demo walkthrough](docs/ARCHITECTURE.md) for Mermaid diagrams, runtime flow, and experimental boundaries.
+
+## Documentation
+
+- [System design](docs/SYSTEM_DESIGN.md)
+- [Architecture and demo walkthrough](docs/ARCHITECTURE.md)
+- [Capstone report](docs/CAPSTONE_REPORT.md)
+- [TR-037 failure analysis](docs/TR037_FAILURE_ANALYSIS.md)
+- [TR-039 post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md)
+- [Dataset provenance](docs/DATASET_PROVENANCE.md)
+
+## Current state — first release through TR-039
+
+TraceRoot includes a knowledge-only RAG baseline and an agentic investigator with deterministic logs, metrics, deployments, and code-change tools. The agent generates and verifies hypotheses, gathers operational evidence, and produces an RCA; investigation traces and results are persisted. Evaluation combines DeepEval with deterministic evidence and trace metrics, and runtime instrumentation records latency, token usage, and estimated cost.
+
+The first release evaluates RAG and Agent approaches on the same frozen six-incident dataset, includes pre- and post-TR-038 comparisons, and provides both CLI and Streamlit demos. See the [failure analysis](docs/TR037_FAILURE_ANALYSIS.md) and [post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md) for detailed methods, results, and limitations.
+
+## Two approaches
+
+| Approach | Input and evidence | Output |
+|---|---|---|
+| Knowledge-only RAG baseline | Incident title/description plus engineering knowledge retrieved from Qdrant | Structured RCA and separate retrieval provenance; operational `evidence_ids` remain empty |
+| Agentic investigation | Incident context, hypotheses, and selected logs, metrics, deployments, and code changes from local incident files | Structured RCA referencing gathered evidence, plus investigation trace |
+
+The agent does not retrieve the RAG knowledge corpus. Both approaches return `RCAResult`, and ground truth is evaluator-only: it is used for evaluation, never supplied to either approach at runtime. Inputs are not fully at parity: RAG retrieval uses the incident title and description, while the Agent receives richer incident context, including `suspected_services` when present.
+
+## Evaluation dataset
+
+The frozen evaluation set contains six incidents. `INC-001` to `INC-003` are controlled synthetic incidents; `INC-004` to `INC-006` are synthetic/adapted scenarios based on OpenTelemetry Demo / Astronomy Shop failure modes. They are not captured production traces.
 
 ## Setup and run
 
@@ -118,7 +131,7 @@ docs/TR039_POST_IMPROVEMENT_EVALUATION.md
 
 ## Release scope and future work
 
-The first release uses reproducible, file-backed evidence. MCP integration is stretch work. Live incident intake, live observability/deployment/Git integrations, and production deployment are future work.
+The first release / capstone version is complete through TR-039 evaluation work. It uses frozen, file-backed incident evidence for reproducibility, with no real company/customer data. The Streamlit UI is a demo/presentation layer. Live telemetry integrations, production adapters, and MCP are future work; this release is a controlled research prototype, not a production-ready incident response system.
 
 ## Streamlit UI
 
