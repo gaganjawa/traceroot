@@ -739,3 +739,130 @@ def test_investigate_keeps_consecutive_empty_result_guardrail(
     assert mock_client.responses.parse.call_count == 2
     assert mock_execute_tool.call_count == 2
     assert len(result.tool_history) == 2
+
+
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_uses_injected_mcp_executor(mock_get_llm_client):
+    mock_get_llm_client.return_value.responses.parse.return_value = (
+        create_mock_llm_response(ToolName.LOGS, "checkout-service")
+    )
+    mcp_executor = MagicMock(return_value=[])
+
+    investigate(create_test_state(), max_tool_calls=1, tool_executor=mcp_executor)
+
+    mcp_executor.assert_called_once_with(
+        tool_name=ToolName.LOGS,
+        incident_id="INC-TEST",
+        service="checkout-service",
+    )
+
+
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_with_mcp_preserves_tool_history(mock_get_llm_client):
+    mock_get_llm_client.return_value.responses.parse.return_value = (
+        create_mock_llm_response(ToolName.LOGS, "checkout-service")
+    )
+    entry = LogEntry(
+        id="LOG-MCP-1",
+        timestamp="2026-09-27T12:00:00Z",
+        service="checkout-service",
+        level="ERROR",
+        message="database timeout",
+    )
+
+    result = investigate(
+        create_test_state(),
+        max_tool_calls=1,
+        tool_executor=MagicMock(return_value=[entry]),
+    )
+
+    assert result.tool_history[0].tool_name == "logs"
+    assert result.tool_history[0].service == "checkout-service"
+    assert result.tool_history[0].evidence_ids == ["LOG-MCP-1"]
+
+
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_with_mcp_preserves_evidence_ids(mock_get_llm_client):
+    mock_get_llm_client.return_value.responses.parse.return_value = (
+        create_mock_llm_response(ToolName.LOGS, "checkout-service")
+    )
+    entry = LogEntry(
+        id="LOG-MCP-1",
+        timestamp="2026-09-27T12:00:00Z",
+        service="checkout-service",
+        level="ERROR",
+        message="database timeout",
+    )
+
+    result = investigate(
+        create_test_state(),
+        max_tool_calls=1,
+        tool_executor=MagicMock(return_value=[entry]),
+    )
+
+    assert result.evidence_ids == ["LOG-MCP-1"]
+
+
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_with_mcp_keeps_duplicate_guardrail(mock_get_llm_client):
+    mock_get_llm_client.return_value.responses.parse.return_value = (
+        create_mock_llm_response(ToolName.LOGS, "checkout-service")
+    )
+    mcp_executor = MagicMock(
+        return_value=[
+            LogEntry(
+                id="LOG-MCP-1",
+                timestamp="2026-09-27T12:00:00Z",
+                service="checkout-service",
+                level="ERROR",
+                message="database timeout",
+            )
+        ]
+    )
+
+    result = investigate(
+        create_test_state(),
+        max_tool_calls=3,
+        tool_executor=mcp_executor,
+    )
+
+    assert result.stop_reason == "duplicate_selection"
+    mcp_executor.assert_called_once()
+
+
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_with_mcp_keeps_empty_result_guardrail(mock_get_llm_client):
+    mock_get_llm_client.return_value.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS, "checkout-service"),
+        create_mock_llm_response(ToolName.METRICS, "payment-service"),
+    ]
+    mcp_executor = MagicMock(return_value=[])
+
+    result = investigate(
+        create_test_state(),
+        max_tool_calls=3,
+        tool_executor=mcp_executor,
+    )
+
+    assert result.stop_reason == "consecutive_empty_results"
+    assert mcp_executor.call_count == 2
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_investigate_defaults_to_direct_tool_execution(
+    mock_get_llm_client,
+    mock_execute_tool,
+):
+    mock_get_llm_client.return_value.responses.parse.return_value = (
+        create_mock_llm_response(ToolName.LOGS, "checkout-service")
+    )
+    mock_execute_tool.return_value = []
+
+    investigate(create_test_state(), max_tool_calls=1)
+
+    mock_execute_tool.assert_called_once_with(
+        tool_name=ToolName.LOGS,
+        incident_id="INC-TEST",
+        service="checkout-service",
+    )

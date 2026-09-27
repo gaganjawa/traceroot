@@ -72,6 +72,7 @@ def investigate(
     state: InvestigationState,
     max_tool_calls: int = 6,
     llm_usage: LLMUsage | None = None,
+    tool_executor=None,
 ) -> InvestigationState:
     if max_tool_calls <= 0:
         raise ValueError("max_tool_calls must be a positive integer.")
@@ -140,7 +141,8 @@ def investigate(
             state.stop_reasoning = selection.reasoning
             break
 
-        tool_results = execute_tool(
+        executor = tool_executor or execute_tool
+        tool_results = executor(
             tool_name=selection.tool_name,
             incident_id=state.incident.id,
             service=selected_service,
