@@ -1,4 +1,5 @@
 from traceroot.intake.registry import RuntimeIncidentRegistry
+from traceroot.integrations.live_logs import LokiLogsProvider
 from traceroot.tools.backend import EvidenceEntry
 from traceroot.tools.models import ToolName
 
@@ -7,8 +8,10 @@ class LiveEvidenceBackend:
     def __init__(
         self,
         incident_registry: RuntimeIncidentRegistry,
+        logs_provider: LokiLogsProvider,
     ):
         self.incident_registry = incident_registry
+        self.logs_provider = logs_provider
 
     def query(
         self,
@@ -20,6 +23,12 @@ class LiveEvidenceBackend:
             raise ValueError(f"Unknown tool name: {tool_name}")
 
         incident = self.incident_registry.get(incident_id)
+
+        if tool_name == ToolName.LOGS:
+            return self.logs_provider.query(
+                incident=incident,
+                service=service,
+            )
 
         raise NotImplementedError(
             f"Live evidence provider is not configured for "
