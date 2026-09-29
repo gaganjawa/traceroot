@@ -1,4 +1,5 @@
 from traceroot.intake.registry import RuntimeIncidentRegistry
+from traceroot.integrations.live_code_changes import GitHubCodeChangesProvider
 from traceroot.integrations.live_deployments import GitHubDeploymentsProvider
 from traceroot.integrations.live_logs import LokiLogsProvider
 from traceroot.integrations.live_metrics import PrometheusMetricsProvider
@@ -13,11 +14,13 @@ class LiveEvidenceBackend:
         logs_provider: LokiLogsProvider,
         metrics_provider: PrometheusMetricsProvider,
         deployments_provider: GitHubDeploymentsProvider,
+        code_changes_provider: GitHubCodeChangesProvider,
     ):
         self.incident_registry = incident_registry
         self.logs_provider = logs_provider
         self.metrics_provider = metrics_provider
         self.deployments_provider = deployments_provider
+        self.code_changes_provider = code_changes_provider
 
     def query(
         self,
@@ -48,9 +51,7 @@ class LiveEvidenceBackend:
                 service=service,
             )
 
-        raise NotImplementedError(
-            f"Live evidence provider is not configured for "
-            f"tool={tool_name.value}, "
-            f"incident={incident.id}, "
-            f"service={service}"
+        return self.code_changes_provider.query(
+            incident=incident,
+            service=service,
         )
