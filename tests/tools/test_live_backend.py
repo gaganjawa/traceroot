@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from traceroot.data.models import MetricEntry
+from traceroot.data.models import DeploymentEntry, MetricEntry
 from traceroot.domain.incident import Incident
 from traceroot.intake.registry import RuntimeIncidentRegistry
 from traceroot.tools.live_backend import LiveEvidenceBackend
@@ -32,6 +32,7 @@ def test_live_backend_resolves_runtime_incident():
         incident_registry=registry,
         logs_provider=logs_provider,
         metrics_provider=Mock(),
+        deployments_provider=Mock(),
     )
 
     result = backend.query(
@@ -54,6 +55,7 @@ def test_live_backend_rejects_unknown_incident():
         incident_registry=registry,
         logs_provider=Mock(),
         metrics_provider=Mock(),
+        deployments_provider=Mock(),
     )
 
     with pytest.raises(
@@ -76,6 +78,7 @@ def test_live_backend_rejects_unknown_tool():
         incident_registry=registry,
         logs_provider=Mock(),
         metrics_provider=Mock(),
+        deployments_provider=Mock(),
     )
 
     with pytest.raises(
@@ -100,6 +103,7 @@ def test_live_backend_delegates_logs_to_provider():
         incident_registry=registry,
         logs_provider=logs_provider,
         metrics_provider=Mock(),
+        deployments_provider=Mock(),
     )
 
     result = backend.query(
@@ -116,7 +120,7 @@ def test_live_backend_delegates_logs_to_provider():
     assert result == []
 
 
-@pytest.mark.parametrize("tool_name", [ToolName.DEPLOYMENTS, ToolName.CODE_CHANGES])
+@pytest.mark.parametrize("tool_name", [ToolName.CODE_CHANGES])
 def test_live_backend_rejects_unconfigured_provider(tool_name):
     registry = RuntimeIncidentRegistry()
     incident = make_incident()
@@ -126,6 +130,7 @@ def test_live_backend_rejects_unconfigured_provider(tool_name):
         incident_registry=registry,
         logs_provider=Mock(),
         metrics_provider=Mock(),
+        deployments_provider=Mock(),
     )
 
     with pytest.raises(
@@ -145,7 +150,7 @@ def metrics_backend():
     registry.register(incident)
     metrics_provider = Mock()
     metrics_provider.query.return_value = []
-    backend = LiveEvidenceBackend(registry, Mock(), metrics_provider)
+    backend = LiveEvidenceBackend(registry, Mock(), metrics_provider, Mock())
     return backend, incident, metrics_provider
 
 
@@ -187,4 +192,71 @@ def test_live_backend_resolves_incident_before_metrics_delegation(metrics_backen
     backend, _, provider = metrics_backend
     with pytest.raises(ValueError, match="Runtime incident not found"):
         backend.query(ToolName.METRICS, "missing")
+    provider.query.assert_not_called()
+
+
+@pytest.fixture
+def deployments_backend():
+    registry = RuntimeIncidentRegistry()
+    incident = make_incident()
+    registry.register(incident)
+    provider = Mock()
+    provider.query.return_value = []
+    backend = LiveEvidenceBackend(registry, Mock(), Mock(), provider)
+    return backend, incident, provider
+
+
+def test_live_backend_delegates_deployments_to_provider(deployments_backend):
+    backend, incident, provider = deployments_backend
+    backend.query(ToolName.DEPLOYMENTS, incident.id)
+    provider.query.assert_called_once_with(incident=incident, service=None)
+    backend.logs_provider.query.assert_not_called()
+    backend.metrics_provider.query.assert_not_called()
+
+
+def test_live_backend_passes_resolved_incident_to_deployments_provider(
+    deployments_backend,
+):
+    backend, incident, provider = deployments_backend
+    backend.query(ToolName.DEPLOYMENTS, incident.id)
+    assert provider.query.call_args.kwargs["incident"] is incident
+
+
+def test_live_backend_passes_service_to_deployments_provider(deployments_backend):
+    backend, incident, provider = deployments_backend
+    backend.query(ToolName.DEPLOYMENTS, incident.id, service="checkout-service")
+    provider.query.assert_called_once_with(
+        incident=incident, service="checkout-service"
+    )
+
+
+def test_live_backend_returns_deployments_provider_results(deployments_backend):
+    backend, incident, provider = deployments_backend
+    provider.query.return_value = [
+        DeploymentEntry(
+            id="DEPLOY-LIVE-123",
+            timestamp=incident.start_time,
+            service="checkout-service",
+            version="v1.2.3",
+            description="Fix checkout",
+        )
+    ]
+    assert (
+        backend.query(ToolName.DEPLOYMENTS, incident.id) is provider.query.return_value
+    )
+
+
+def test_live_backend_resolves_incident_before_deployments_delegation(
+    deployments_backend,
+):
+    backend, _, provider = deployments_backend
+    with pytest.raises(ValueError, match="Runtime incident not found"):
+        backend.query(ToolName.DEPLOYMENTS, "missing")
+    provider.query.assert_not_called()
+
+
+def test_live_backend_validates_tool_before_deployments_delegation(deployments_backend):
+    backend, _, provider = deployments_backend
+    with pytest.raises(ValueError, match="Unknown tool name"):
+        backend.query("unknown_tool", "missing")
     provider.query.assert_not_called()
