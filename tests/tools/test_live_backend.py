@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from traceroot.data.models import MetricEntry
 from traceroot.domain.incident import Incident
 from traceroot.intake.registry import RuntimeIncidentRegistry
 from traceroot.tools.live_backend import LiveEvidenceBackend
@@ -30,6 +31,7 @@ def test_live_backend_resolves_runtime_incident():
     backend = LiveEvidenceBackend(
         incident_registry=registry,
         logs_provider=logs_provider,
+        metrics_provider=Mock(),
     )
 
     result = backend.query(
@@ -51,6 +53,7 @@ def test_live_backend_rejects_unknown_incident():
     backend = LiveEvidenceBackend(
         incident_registry=registry,
         logs_provider=Mock(),
+        metrics_provider=Mock(),
     )
 
     with pytest.raises(
@@ -72,6 +75,7 @@ def test_live_backend_rejects_unknown_tool():
     backend = LiveEvidenceBackend(
         incident_registry=registry,
         logs_provider=Mock(),
+        metrics_provider=Mock(),
     )
 
     with pytest.raises(
@@ -95,6 +99,7 @@ def test_live_backend_delegates_logs_to_provider():
     backend = LiveEvidenceBackend(
         incident_registry=registry,
         logs_provider=logs_provider,
+        metrics_provider=Mock(),
     )
 
     result = backend.query(
@@ -111,7 +116,8 @@ def test_live_backend_delegates_logs_to_provider():
     assert result == []
 
 
-def test_live_backend_rejects_unconfigured_metrics_provider():
+@pytest.mark.parametrize("tool_name", [ToolName.DEPLOYMENTS, ToolName.CODE_CHANGES])
+def test_live_backend_rejects_unconfigured_provider(tool_name):
     registry = RuntimeIncidentRegistry()
     incident = make_incident()
     registry.register(incident)
@@ -119,13 +125,66 @@ def test_live_backend_rejects_unconfigured_metrics_provider():
     backend = LiveEvidenceBackend(
         incident_registry=registry,
         logs_provider=Mock(),
+        metrics_provider=Mock(),
     )
 
     with pytest.raises(
         NotImplementedError,
-        match="tool=metrics",
+        match=f"tool={tool_name.value}",
     ):
         backend.query(
-            tool_name=ToolName.METRICS,
+            tool_name=tool_name,
             incident_id=incident.id,
         )
+
+
+@pytest.fixture
+def metrics_backend():
+    registry = RuntimeIncidentRegistry()
+    incident = make_incident()
+    registry.register(incident)
+    metrics_provider = Mock()
+    metrics_provider.query.return_value = []
+    backend = LiveEvidenceBackend(registry, Mock(), metrics_provider)
+    return backend, incident, metrics_provider
+
+
+def test_live_backend_delegates_metrics_to_provider(metrics_backend):
+    backend, incident, provider = metrics_backend
+    backend.query(ToolName.METRICS, incident.id)
+    provider.query.assert_called_once_with(incident=incident, service=None)
+    backend.logs_provider.query.assert_not_called()
+
+
+def test_live_backend_passes_resolved_incident_to_metrics_provider(metrics_backend):
+    backend, incident, provider = metrics_backend
+    backend.query(ToolName.METRICS, incident.id)
+    assert provider.query.call_args.kwargs["incident"] is incident
+
+
+def test_live_backend_passes_service_to_metrics_provider(metrics_backend):
+    backend, incident, provider = metrics_backend
+    backend.query(ToolName.METRICS, incident.id, service="payment-service")
+    provider.query.assert_called_once_with(incident=incident, service="payment-service")
+
+
+def test_live_backend_returns_metrics_provider_results(metrics_backend):
+    backend, incident, provider = metrics_backend
+    provider.query.return_value = [
+        MetricEntry(
+            id="METRIC-LIVE-123",
+            timestamp=incident.start_time,
+            service="checkout-service",
+            metric="latency",
+            value=0.5,
+            unit="seconds",
+        )
+    ]
+    assert backend.query(ToolName.METRICS, incident.id) is provider.query.return_value
+
+
+def test_live_backend_resolves_incident_before_metrics_delegation(metrics_backend):
+    backend, _, provider = metrics_backend
+    with pytest.raises(ValueError, match="Runtime incident not found"):
+        backend.query(ToolName.METRICS, "missing")
+    provider.query.assert_not_called()

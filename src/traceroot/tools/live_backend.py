@@ -1,5 +1,6 @@
 from traceroot.intake.registry import RuntimeIncidentRegistry
 from traceroot.integrations.live_logs import LokiLogsProvider
+from traceroot.integrations.live_metrics import PrometheusMetricsProvider
 from traceroot.tools.backend import EvidenceEntry
 from traceroot.tools.models import ToolName
 
@@ -9,9 +10,11 @@ class LiveEvidenceBackend:
         self,
         incident_registry: RuntimeIncidentRegistry,
         logs_provider: LokiLogsProvider,
+        metrics_provider: PrometheusMetricsProvider,
     ):
         self.incident_registry = incident_registry
         self.logs_provider = logs_provider
+        self.metrics_provider = metrics_provider
 
     def query(
         self,
@@ -26,6 +29,12 @@ class LiveEvidenceBackend:
 
         if tool_name == ToolName.LOGS:
             return self.logs_provider.query(
+                incident=incident,
+                service=service,
+            )
+
+        if tool_name == ToolName.METRICS:
+            return self.metrics_provider.query(
                 incident=incident,
                 service=service,
             )
