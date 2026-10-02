@@ -1007,6 +1007,7 @@ MCP must not delay the core experiment.
 | TR-045C3 | Live GitHub Deployments | — | ✅ DONE |
 | TR-045C4 | Live GitHub Code Changes | — | ✅ DONE |
 | TR-045D | Live Backend Routing | — | ✅ DONE |
+| TR-045E | Live Provider Bootstrap Configuration | — | ✅ DONE |
 | TR-046 | Simple Investigation UI | 2h | ✅ DONE |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
@@ -1051,10 +1052,10 @@ The runtime-generated incident should use the same `Incident` domain contract as
 ### TR-045 — Live Evidence Integrations
 
 Status:
-- TR-045A, TR-045B, TR-045C1 through TR-045C4, and TR-045D complete
+- TR-045A, TR-045B, TR-045C1 through TR-045C4, TR-045D, and TR-045E complete
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- Latest full project validation: **575 passed** at TR-045D completion, as reported in the project handoff; not rerun for this documentation update
-- Live backend routing complete; runtime provider/bootstrap configuration and user-facing live-mode wiring remain future work
+- Latest full project validation: **644 passed** at TR-045E completion; not rerun for this documentation update
+- Live backend routing and runtime provider/bootstrap configuration complete; user-facing live-mode wiring remains future work
 
 Goal:
 
@@ -1132,7 +1133,7 @@ Completed:
 - Existing `execute_tool(...)` public contract preserved
 - Fixture behavior remains the default when no router is configured
 - Agent and MCP code unchanged
-- Runtime provider/bootstrap configuration and user-facing live-mode wiring remain pending
+- Runtime provider/bootstrap configuration and user-facing live-mode wiring were outside this ticket; bootstrap configuration completed in TR-045E
 
 Recorded validation at ticket completion:
 - Router/interface focused tests: **20 passed**
@@ -1144,6 +1145,25 @@ Smoke test:
 - Fixture path: `INC-001` returned 4 evidence entries: `LOG-001-01`, `LOG-001-02`, `LOG-001-03`, `LOG-001-07`
 - Live-routing path: registered runtime incident routed to the configured live backend and returned `["LIVE-EVIDENCE"]`
 - Final smoke message: `TR-045D routing smoke passed`
+
+### TR-045E — Live Provider Bootstrap Configuration
+
+Completed:
+- Added validated `LiveEvidenceConfig` and explicit `load_live_evidence_config(...)` environment loader in `config.py`
+- Added `LiveEvidenceRuntime`, `build_live_runtime(...)`, and separate `activate_live_runtime(...)` in `bootstrap.py`
+- All four live providers constructed from explicit configuration with current provider defaults
+- One shared `RuntimeIncidentRegistry` used by callers, the live backend, and the router; supplied registries preserved
+- Construction makes no HTTP requests and does not activate routing
+- Explicit activation uses the existing `configure_backend(...)` seam; fixture behavior remains the default without activation
+- GitHub token redacted from configuration output and shared by both GitHub providers
+- Environment variables documented in `.env.example`
+- Agent/MCP public contracts preserved; CLI/UI live-mode wiring remains pending
+
+Recorded validation at ticket completion:
+- Configuration/bootstrap focused tests: **69 passed**
+- Full project validation: **644 passed**
+- Ruff formatting and linting passed
+- Routing tests cover all four live providers and preserved fixture queries
 
 ### TR-046 — Simple Investigation UI
 
@@ -1233,6 +1253,7 @@ No first-release tickets in progress.
 - TR-045C3 — Live GitHub Deployments
 - TR-045C4 — Live GitHub Code Changes
 - TR-045D — Live Backend Routing
+- TR-045E — Live Provider Bootstrap Configuration
 - TR-046 — Simple Investigation UI
 
 ## 🟣 Stretch
@@ -1241,7 +1262,7 @@ No outstanding stretch tickets.
 
 ## 🔵 Extended Scope
 
-- TR-045 — Live Evidence Integrations (backend foundation, providers, and routing complete; runtime provider/bootstrap configuration and user-facing live-mode wiring remain future work)
+- TR-045 — Live Evidence Integrations (backend foundation, providers, routing, and bootstrap configuration complete; user-facing live-mode wiring remains future work)
 
 ---
 
@@ -1280,8 +1301,9 @@ Current state:
 - TR-045A Evidence Backend Abstraction and TR-045B Live Evidence Backend Foundation complete
 - TR-045C1 Live Loki Logs, TR-045C2 Live Prometheus Metrics, TR-045C3 Live GitHub Deployments, and TR-045C4 Live GitHub Code Changes complete
 - TR-045D Live Backend Routing complete; registry membership selects the live or fixture backend
+- TR-045E Live Provider Bootstrap Configuration complete; construction and activation are explicit separate operations
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- **575 passed** in the latest full test run at TR-045D completion (reported in the project handoff; not rerun for this documentation update)
+- **644 passed** in the latest full test run at TR-045E completion (not rerun for this documentation update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1320,7 +1342,7 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-045 — Live Evidence Integrations: runtime provider/bootstrap configuration and user-facing live-mode wiring remain future work; live backend routing complete
+1. TR-045 — Live Evidence Integrations: user-facing live-mode wiring remains future work; live backend routing and runtime provider/bootstrap configuration complete
 
 Known limitations retained after evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
@@ -1333,4 +1355,4 @@ Known limitations retained after evaluation:
 
 Extended scope after the core capstone:
 - TR-044 — Live Incident Intake (complete)
-- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D complete; runtime provider/bootstrap configuration and user-facing live-mode wiring remain future work)
+- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E complete; user-facing live-mode wiring remains future work)
