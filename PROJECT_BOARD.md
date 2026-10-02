@@ -1056,8 +1056,8 @@ The runtime-generated incident should use the same `Incident` domain contract as
 Status:
 - TR-045A, TR-045B, TR-045C1 through TR-045C4, TR-045D, TR-045E, and TR-045F complete
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- Latest verified full project validation: **673 passed** after CLI implementation, before the Loki regression fix; no newer verified count recorded and not rerun for this documentation update
-- Live backend routing, bootstrap configuration, and CLI live-mode wiring complete; real end-to-end live CLI smoke passed; Streamlit/UI live-mode wiring remains pending
+- Latest verified full project validation: **676 passed** at reviewed repository state `206912a`; lint and formatting passed; not rerun for this board update
+- Live backend routing, bootstrap configuration, and CLI live-mode wiring complete; real end-to-end live CLI smoke passed; basic Streamlit/UI live-mode wiring is NEXT and remains ⚪ NOT STARTED
 
 Goal:
 
@@ -1087,6 +1087,26 @@ Same TraceRoot investigation workflow
 ```
 
 The investigation agent should not need to know whether evidence comes from frozen fixtures or live adapters.
+
+Next — basic Streamlit/UI live-mode wiring:
+- ⚪ NOT STARTED / NEXT under TR-045; ahead of TR-047
+- Expose the working live investigation path through the existing Streamlit UI; keep the effort basic and functional
+
+Planned scope:
+- Preserve existing fixture/demo UI behavior and add a simple live-mode option using existing Streamlit components, minimal forms/buttons, and minimal layout changes
+- Accept title, description, timezone-aware start time, and suspected services; reuse `create_incident(...)`
+- Reuse `load_live_evidence_config(...)` and `build_live_runtime(...)`; register the incident in the runtime registry shared by the live backend and router
+- Invoke the existing full Agent investigation pipeline with a runtime-specific executor
+- Display incident ID, hypotheses/statuses, tool trace, evidence IDs, stop reason, final RCA, confidence, and saved trace path if available
+- Provide clear configuration/error messages; mock external calls in UI unit tests
+- No dashboard redesign, unnecessary charts, animations, custom styling/themes, custom component framework, authentication/accounts, deployment/hosting, or product-design expansion
+
+Architecture constraint:
+- `configure_backend(...)` mutates the process-wide `_default_backend`; avoid shared global activation for concurrent Streamlit sessions
+- Prefer investigation-scoped execution through `investigate(..., tool_executor=...)` or an equivalent runtime-specific executor threaded through the existing pipeline; limit changes to necessary plumbing rather than a broad architectural rewrite
+
+Target flow:
+- Incident input → runtime incident creation → live configuration → runtime construction → shared registry registration → scoped Agent investigation → existing result/RCA/evidence/trace display
 
 ### TR-045A — Evidence Backend Abstraction
 
@@ -1187,7 +1207,7 @@ Completed:
 Recorded validation:
 - Live CLI focused tests: **20 passed** (reported smoke handoff)
 - Full CLI test file at implementation validation: **39 passed**
-- Full suite after CLI implementation: **673 passed**, before the Loki regression fix; no newer verified count recorded
+- Full suite after CLI implementation: **673 passed**, before the Loki regression fix
 - Ruff formatting and linting passed
 - Fixture CLI smoke passed with `INC-002`
 - Real live CLI smoke passed end-to-end
@@ -1233,6 +1253,7 @@ The UI is a presentation and input layer only; core investigation logic remains 
 
 Status:
 - ⚪ NOT STARTED
+- Priority: next major quality ticket after basic Streamlit/UI live-mode wiring under TR-045
 
 Reason:
 - Real live CLI smoke gathered metrics, Loki logs, and GitHub code changes, but the deployment query returned no evidence
@@ -1336,8 +1357,8 @@ No outstanding stretch tickets.
 
 ## 🔵 Extended Scope
 
-- TR-045 — Live Evidence Integrations (backend foundation, providers, routing, bootstrap, and CLI live mode complete; Streamlit/UI live-mode wiring remains pending)
-- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (⚪ NOT STARTED)
+- TR-045 — Live Evidence Integrations (backend foundation, providers, routing, bootstrap, and CLI live mode complete; basic Streamlit/UI live-mode wiring NEXT / ⚪ NOT STARTED)
+- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (⚪ NOT STARTED; next after basic UI live-mode wiring)
 
 ---
 
@@ -1380,7 +1401,7 @@ Current state:
 - TR-045F CLI Live-Mode Wiring complete; fixture CLI smoke and real end-to-end live CLI smoke passed
 - Real live CLI path verified from runtime incident creation through evidence gathering, RCA generation, and trace persistence
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- **673 passed** in the latest verified full test run after CLI implementation, before the Loki regression fix (no newer verified count recorded; not rerun for this documentation update)
+- **676 passed** at reviewed repository state `206912a`; lint and formatting passed (not rerun for this board update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1419,8 +1440,8 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-047 — RCA Claim Grounding & Negative-Evidence Validation: planned claim grounding, negative-evidence-aware synthesis, claim verification, and confidence calibration
-2. TR-045 — Live Evidence Integrations: Streamlit/UI live-mode wiring remains pending; CLI live mode and real end-to-end live path complete
+1. TR-045 — Live Evidence Integrations: basic Streamlit/UI live-mode wiring NEXT / ⚪ NOT STARTED; reuse the existing UI and live pipeline with investigation-scoped execution; basic/functional only, no redesign
+2. TR-047 — RCA Claim Grounding & Negative-Evidence Validation: next major quality ticket after UI wiring; ⚪ NOT STARTED; planned claim grounding, negative-evidence-aware synthesis, claim verification, and confidence calibration
 3. Any post-improvement evaluation remains pending and must be a dedicated run preserving the existing frozen comparison artifacts
 
 Known limitations retained after evaluation:
@@ -1432,7 +1453,18 @@ Known limitations retained after evaluation:
 - Supporting-evidence label completeness and hidden-trigger observability limitations are documented in TR-037
 - Recorded runtime token/cost reporting covers instrumented generation/investigation calls, not all-in embedding and evaluator costs
 
+Codex-review follow-ups — future work:
+- Telemetry response validation/fidelity and Prometheus label preservation
+- Loki selector escaping and evidence identity improvements
+- Bounded evidence context
+- Failed investigation persistence
+- Deployment pagination limits
+- Evaluation stop-reason mismatch
+- Comparison artifact isolation
+- Lazy embeddings initialization
+- Runtime isolation improvements beyond the scoped execution needed for basic UI wiring
+
 Extended scope after the core capstone:
 - TR-044 — Live Incident Intake (complete)
-- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E/F complete; Streamlit/UI live-mode wiring remains pending)
-- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (⚪ NOT STARTED)
+- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E/F complete; basic Streamlit/UI live-mode wiring NEXT / ⚪ NOT STARTED)
+- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (⚪ NOT STARTED; next after basic UI live-mode wiring)
