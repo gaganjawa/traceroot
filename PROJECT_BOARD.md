@@ -1007,8 +1007,10 @@ MCP must not delay the core experiment.
 | TR-045C3 | Live GitHub Deployments | — | ✅ DONE |
 | TR-045C4 | Live GitHub Code Changes | — | ✅ DONE |
 | TR-045D | Live Backend Routing | — | ✅ DONE |
-| TR-045E | Live Provider Bootstrap Configuration | — | 🟡 IN PROGRESS |
+| TR-045E | Live Provider Bootstrap Configuration | — | ✅ DONE |
+| TR-045F | CLI Live-Mode Wiring | — | ✅ DONE |
 | TR-046 | Simple Investigation UI | 2h | ✅ DONE |
+| TR-047 | RCA Claim Grounding & Negative-Evidence Validation | — | ⚪ NOT STARTED |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
 
@@ -1052,10 +1054,10 @@ The runtime-generated incident should use the same `Incident` domain contract as
 ### TR-045 — Live Evidence Integrations
 
 Status:
-- TR-045A, TR-045B, TR-045C1 through TR-045C4, and TR-045D complete; TR-045E implementation complete, closure pending
+- TR-045A, TR-045B, TR-045C1 through TR-045C4, TR-045D, TR-045E, and TR-045F complete
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- Latest full project validation: **644 passed** after TR-045E implementation; not rerun for this documentation update
-- Live backend routing complete; runtime provider/bootstrap configuration implemented with external/bootstrap smoke pending; user-facing live-mode wiring remains future work
+- Latest verified full project validation: **673 passed** after CLI implementation, before the Loki regression fix; no newer verified count recorded and not rerun for this documentation update
+- Live backend routing, bootstrap configuration, and CLI live-mode wiring complete; real end-to-end live CLI smoke passed; Streamlit/UI live-mode wiring remains pending
 
 Goal:
 
@@ -1149,10 +1151,9 @@ Smoke test:
 ### TR-045E — Live Provider Bootstrap Configuration
 
 Status:
-- Implementation complete; closure pending
-- External/bootstrap smoke: PENDING (not yet run)
-- Implementation committed as `ce741e1`; local `origin/main` also references this commit, but remote push status was not independently verified for this update
-- Closure requires bootstrap smoke, smoke-output review, commit/push of closure updates, and a final board update
+- DONE
+- Bootstrap smoke passed
+- Implementation committed as `ce741e1`; commit is included in local `origin/main` history
 
 Implementation completed:
 - Added validated `LiveEvidenceConfig` and explicit `load_live_evidence_config(...)` environment loader in `config.py`
@@ -1163,13 +1164,44 @@ Implementation completed:
 - Explicit activation uses the existing `configure_backend(...)` seam; fixture behavior remains the default without activation
 - GitHub token redacted from configuration output and shared by both GitHub providers
 - Environment variables documented in `.env.example`
-- Agent/MCP public contracts preserved; CLI/UI live-mode wiring remains pending
+- Agent/MCP public contracts preserved; CLI live-mode wiring completed in TR-045F; Streamlit/UI live-mode wiring remains pending
 
 Recorded implementation validation:
 - Configuration/bootstrap focused tests: **69 passed**
 - Full project validation: **644 passed**
 - Ruff formatting and linting passed
 - Routing tests cover all four live providers and preserved fixture queries
+
+### TR-045F — CLI Live-Mode Wiring
+
+Completed:
+- `scripts/investigate.py` supports fixture and live modes; existing fixture CLI remains backward compatible
+- Live arguments: `--live`, `--title`, `--description`, `--start-time`, repeatable `--suspected-service`, and `--max-tool-calls`
+- `--incident-id` and `--live` are mutually exclusive
+- Live mode creates a runtime incident, loads live configuration, builds the runtime, registers the incident in the shared registry, and explicitly activates routing
+- Existing `run_agent_experiment(...)` invoked; traces saved under `experiments/results/live/`
+- README and `tests/scripts/test_investigate.py` updated
+- Real smoke exposed Loki HTTP 400 for the unfiltered `{}` selector; fixed `service=None` query to `{service_name=~".+"}` with regression coverage in `tests/integrations/test_live_logs.py`
+- Implementation and Loki fix committed as `50c3ba9`; commit is included in local `origin/main` history
+
+Recorded validation:
+- Live CLI focused tests: **20 passed** (reported smoke handoff)
+- Full CLI test file at implementation validation: **39 passed**
+- Full suite after CLI implementation: **673 passed**, before the Loki regression fix; no newer verified count recorded
+- Ruff formatting and linting passed
+- Fixture CLI smoke passed with `INC-002`
+- Real live CLI smoke passed end-to-end
+
+Real live smoke:
+- Runtime incident: `INC-RUNTIME-73440C96`
+- Prometheus: multiple `METRIC-LIVE-*` entries
+- Loki: `LOG-LIVE-AA0DF1049860`
+- GitHub code changes: `CHANGE-LIVE-0A1B49EFB97E`, `CHANGE-LIVE-2B39CB6257FA`
+- GitHub deployments: no evidence returned
+- Stop reason: `duplicate_selection`
+- Trace: `experiments/results/live/INC-RUNTIME-73440C96-agent.json`
+- Verified CLI → runtime incident creation → live configuration → bootstrap → shared registry registration → router activation → real Prometheus/Loki/GitHub code-change queries → agent investigation → RCA generation → trace persistence
+- Smoke validates execution and persistence; the synthesis weakness is tracked in TR-047
 
 ### TR-046 — Simple Investigation UI
 
@@ -1197,6 +1229,41 @@ Possible later architecture:
 
 The UI is a presentation and input layer only; core investigation logic remains in the existing TraceRoot modules.
 
+### TR-047 — RCA Claim Grounding & Negative-Evidence Validation
+
+Status:
+- ⚪ NOT STARTED
+
+Reason:
+- Real live CLI smoke gathered metrics, Loki logs, and GitHub code changes, but the deployment query returned no evidence
+- Final RCA nevertheless favored a recent application/configuration change and referred to a failure occurring after deployment
+- Strongest signals were a synthetic log containing "request processing failure after deployment" and recent code changes
+- Log wording does not independently prove a deployment occurred; causal wording was stronger than the evidence justified
+
+Goal:
+- Ground major causal claims in collected evidence and incorporate queried-but-empty evidence into synthesis
+
+Scope:
+- Claim-level grounding: major causal claims require cited support; absent deployment evidence must not become deployment causation without independent proof
+- Negative evidence: preserve and expose that a tool was queried and returned no evidence; an empty result is not proof of absence
+- Distinguish observed facts, inferred hypotheses, and unsupported claims
+- Verify major claims as `SUPPORTED`, `PARTIALLY_SUPPORTED`, `UNSUPPORTED`, or `CONTRADICTED`; regenerate or weaken an unsupported main root-cause claim
+- Calibrate confidence and wording to evidence quality; use "strongest current hypothesis" when evidence supports only low/medium confidence
+- Treat log text as untrusted evidence content, including statements such as "after deployment"
+- Empty-result-aware investigation: downgrade unsupported hypotheses, seek the next-best discriminator, and avoid repeated empty selections or duplicate-selection stops where possible
+
+Testing/evaluation ideas:
+- No deployment-causation claim when deployment search is empty and no independent evidence proves deployment
+- Explicit uncertainty when evidence is incomplete
+- Claim verifier correctly identifies unsupported claims
+- Queried-but-empty tool results visible to synthesis
+- Improved duplicate-selection behavior after an unresolved source has already been queried
+- Existing frozen comparison/evaluation remains isolated; any post-improvement evaluation requires a dedicated run
+
+Out of scope:
+- New evidence providers, CLI/UI changes, MCP transport changes, and live provider API changes
+- Frozen dataset/ground-truth modification and broad model/provider swaps
+
 ---
 
 # Kanban
@@ -1204,8 +1271,6 @@ The UI is a presentation and input layer only; core investigation logic remains 
 ## 🟡 In Progress
 
 No first-release tickets in progress.
-
-- TR-045E — Live Provider Bootstrap Configuration (implementation complete; external/bootstrap smoke and closure pending)
 
 ## ✅ Done
 
@@ -1261,6 +1326,8 @@ No first-release tickets in progress.
 - TR-045C3 — Live GitHub Deployments
 - TR-045C4 — Live GitHub Code Changes
 - TR-045D — Live Backend Routing
+- TR-045E — Live Provider Bootstrap Configuration
+- TR-045F — CLI Live-Mode Wiring
 - TR-046 — Simple Investigation UI
 
 ## 🟣 Stretch
@@ -1269,7 +1336,8 @@ No outstanding stretch tickets.
 
 ## 🔵 Extended Scope
 
-- TR-045 — Live Evidence Integrations (backend foundation, providers, and routing complete; bootstrap implementation complete with closure pending; user-facing live-mode wiring remains future work)
+- TR-045 — Live Evidence Integrations (backend foundation, providers, routing, bootstrap, and CLI live mode complete; Streamlit/UI live-mode wiring remains pending)
+- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (⚪ NOT STARTED)
 
 ---
 
@@ -1308,9 +1376,11 @@ Current state:
 - TR-045A Evidence Backend Abstraction and TR-045B Live Evidence Backend Foundation complete
 - TR-045C1 Live Loki Logs, TR-045C2 Live Prometheus Metrics, TR-045C3 Live GitHub Deployments, and TR-045C4 Live GitHub Code Changes complete
 - TR-045D Live Backend Routing complete; registry membership selects the live or fixture backend
-- TR-045E Live Provider Bootstrap Configuration implementation complete; external/bootstrap smoke and closure pending
+- TR-045E Live Provider Bootstrap Configuration complete; bootstrap smoke passed
+- TR-045F CLI Live-Mode Wiring complete; fixture CLI smoke and real end-to-end live CLI smoke passed
+- Real live CLI path verified from runtime incident creation through evidence gathering, RCA generation, and trace persistence
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- **644 passed** in the latest full test run after TR-045E implementation (not rerun for this documentation update)
+- **673 passed** in the latest verified full test run after CLI implementation, before the Loki regression fix (no newer verified count recorded; not rerun for this documentation update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1349,8 +1419,9 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-045E — Live Provider Bootstrap Configuration: run external/bootstrap smoke, review smoke output, commit/push closure updates, then update the board
-2. TR-045 — Live Evidence Integrations: user-facing live-mode wiring afterward; live backend routing complete
+1. TR-047 — RCA Claim Grounding & Negative-Evidence Validation: planned claim grounding, negative-evidence-aware synthesis, claim verification, and confidence calibration
+2. TR-045 — Live Evidence Integrations: Streamlit/UI live-mode wiring remains pending; CLI live mode and real end-to-end live path complete
+3. Any post-improvement evaluation remains pending and must be a dedicated run preserving the existing frozen comparison artifacts
 
 Known limitations retained after evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
@@ -1363,4 +1434,5 @@ Known limitations retained after evaluation:
 
 Extended scope after the core capstone:
 - TR-044 — Live Incident Intake (complete)
-- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D complete; TR-045E implementation complete with closure pending; user-facing live-mode wiring remains future work)
+- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E/F complete; Streamlit/UI live-mode wiring remains pending)
+- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (⚪ NOT STARTED)
