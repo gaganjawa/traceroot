@@ -88,7 +88,7 @@ class LokiLogsProvider:
         service: str | None,
     ) -> str:
         if service is None:
-            return "{}"
+            return '{service_name=~".+"}'
 
         return f'{{service_name="{service}"}}'
 

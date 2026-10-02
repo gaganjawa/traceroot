@@ -181,3 +181,36 @@ queries for evidence (default 6); it does not limit total model requests. The CL
 saves the full trace to `experiments/results/<incident-id>-agent.json`, overwriting
 that incident's previous CLI result. The walkthrough explains how to interpret
 hypotheses, evidence IDs, stop reasons, and the final root-cause analysis.
+
+
+### Live CLI investigations
+
+Configure `OPENAI_API_KEY` and these required live settings in your environment or
+`.env`: `TRACEROOT_LOKI_BASE_URL`, `TRACEROOT_PROMETHEUS_BASE_URL`,
+`TRACEROOT_GITHUB_REPO` (`owner/repo`), and `TRACEROOT_GITHUB_SERVICE`.
+`TRACEROOT_GITHUB_TOKEN` is optional; `.env.example` documents the remaining settings.
+
+```bash
+uv run python scripts/investigate.py --live \
+  --title "Checkout failures" \
+  --description "Checkout requests are timing out." \
+  --start-time "2026-10-03T12:00:00+05:30" \
+  --suspected-service checkout-service \
+  --max-tool-calls 4
+```
+
+`--live` and `--incident-id` are mutually exclusive. Live mode requires a nonblank
+title and description and an explicit timezone-aware ISO start time (`Z` or an
+offset). Providers query windows around that time. `--suspected-service` is optional
+and repeatable; these services are leads, not forced tool filters. Both GitHub
+providers use the single repository/service mapping in configuration.
+
+The CLI creates and registers a runtime incident, explicitly activates live routing,
+and runs the existing agent pipeline. It prints the generated incident ID and saves
+the trace to `experiments/results/live/<runtime-id>-agent.json`. It creates no fixture
+incident files. Live runs make model and provider API calls. Missing/invalid live
+inputs or configuration exit with code 2; execution failures exit with code 1.
+No evidence means the existing guardrail prevents final RCA generation.
+
+Existing fixture commands, result paths, and overwrite behavior remain unchanged.
+Streamlit live-mode wiring remains pending.

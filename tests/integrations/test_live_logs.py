@@ -202,3 +202,53 @@ def test_live_logs_provider_rejects_failed_loki_response(mock_get):
             incident=make_incident(),
             service="checkout-service",
         )
+
+
+def test_build_query_without_service_uses_non_empty_matcher():
+    provider = LokiLogsProvider(base_url="http://localhost:3100")
+
+    query = provider._build_query(None)
+
+    assert query == '{service_name=~".+"}'
+
+
+def test_build_query_with_service_uses_exact_service_matcher():
+    provider = LokiLogsProvider(base_url="http://localhost:3100")
+
+    query = provider._build_query("checkout-service")
+
+    assert query == '{service_name="checkout-service"}'
+
+
+@patch("traceroot.integrations.live_logs.httpx.get")
+def test_query_without_service_uses_non_empty_loki_matcher(mock_get):
+    mock_response = Mock()
+    mock_response.json.return_value = {
+        "status": "success",
+        "data": {
+            "result": [],
+        },
+    }
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    incident = Incident(
+        id="INC-TEST",
+        title="Test incident",
+        description="Test incident description",
+        start_time=datetime(2026, 10, 3, 12, 0, tzinfo=UTC),
+        suspected_services=[],
+    )
+
+    provider = LokiLogsProvider(
+        base_url="http://localhost:3100",
+    )
+
+    provider.query(
+        incident=incident,
+        service=None,
+    )
+
+    _, kwargs = mock_get.call_args
+
+    assert kwargs["params"]["query"] == '{service_name=~".+"}'

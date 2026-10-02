@@ -237,3 +237,370 @@ def test_getting_started_exits_without_incident_or_investigation(monkeypatch, ca
         "experiments/results/",
     ):
         assert term in output
+
+
+@pytest.fixture(autouse=True)
+def no_external_http():
+    with (
+        patch("httpx.get", side_effect=AssertionError("Unexpected provider HTTP call")),
+        patch(
+            "httpx.Client.send",
+            side_effect=AssertionError("Unexpected model HTTP call"),
+        ),
+    ):
+        yield
+
+
+@pytest.fixture
+def live_config():
+    from traceroot.config import LiveEvidenceConfig
+
+    return LiveEvidenceConfig(
+        loki_base_url="https://logs.example.test",
+        prometheus_base_url="https://metrics.example.test",
+        github_repo="example/checkout",
+        github_service="checkout-service",
+    )
+
+
+def live_args():
+    return [
+        "--live",
+        "--title",
+        "Checkout failures",
+        "--description",
+        "Requests time out",
+        "--start-time",
+        "2026-10-03T12:00:00+05:30",
+    ]
+
+
+def test_live_cli_parser_accepts_required_arguments_and_service_leads():
+    args = build_parser().parse_args(
+        live_args()
+        + [
+            "--suspected-service",
+            "checkout-service",
+            "--suspected-service",
+            "payment-service",
+        ]
+    )
+    assert args.live
+    assert args.incident_id is None
+    assert args.suspected_service == ["checkout-service", "payment-service"]
+    assert args.start_time.utcoffset().total_seconds() == 19800
+    assert args.max_tool_calls == 6
+
+
+@pytest.mark.parametrize(
+    "timestamp", ["2026-10-03T12:00:00Z", "2026-10-03T12:00:00+05:30"]
+)
+def test_live_cli_accepts_utc_and_offset_start_times(timestamp):
+    args = live_args()
+    args[-1] = timestamp
+    assert build_parser().parse_args(args).start_time.utcoffset() is not None
+
+
+@pytest.mark.parametrize("timestamp", ["invalid", "2026-10-03", "2026-10-03T12:00:00"])
+def test_live_cli_rejects_invalid_or_naive_start_time(timestamp):
+    args = live_args()
+    args[-1] = timestamp
+    with pytest.raises(SystemExit) as error:
+        build_parser().parse_args(args)
+    assert error.value.code == 2
+
+
+def test_cli_rejects_conflicting_fixture_and_live_modes():
+    with pytest.raises(SystemExit) as error:
+        build_parser().parse_args(live_args() + ["--incident-id", "INC-001"])
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize("flag", ["--title", "--description", "--start-time"])
+def test_live_cli_rejects_missing_required_inputs(monkeypatch, flag):
+    from scripts.investigate import main
+
+    args = live_args()
+    index = args.index(flag)
+    del args[index : index + 2]
+    monkeypatch.setattr("sys.argv", ["investigate.py", *args])
+    with (
+        patch("scripts.investigate.run_live_investigation") as run,
+        pytest.raises(SystemExit) as error,
+    ):
+        main()
+    assert error.value.code == 2
+    run.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "flag, value",
+    [
+        ("--title", " "),
+        ("--description", " "),
+        ("--suspected-service", " "),
+        ("--max-tool-calls", "0"),
+        ("--max-tool-calls", "-1"),
+    ],
+)
+def test_live_cli_rejects_invalid_inputs_before_configuration(monkeypatch, flag, value):
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", *live_args(), flag, value])
+    with (
+        patch("scripts.investigate.load_live_evidence_config") as config,
+        pytest.raises(SystemExit) as error,
+    ):
+        main()
+    assert error.value.code == 2
+    config.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "flag, value",
+    [
+        ("--title", "title"),
+        ("--description", "description"),
+        ("--start-time", "2026-10-03T12:00:00Z"),
+        ("--suspected-service", "checkout-service"),
+    ],
+)
+def test_cli_rejects_live_arguments_in_fixture_mode(monkeypatch, flag, value):
+    from scripts.investigate import main
+
+    monkeypatch.setattr(
+        "sys.argv", ["investigate.py", "--incident-id", "INC-001", flag, value]
+    )
+    with (
+        patch("scripts.investigate.run_investigation") as run,
+        pytest.raises(SystemExit) as error,
+    ):
+        main()
+    assert error.value.code == 2
+    run.assert_not_called()
+
+
+def test_fixture_cli_does_not_load_live_configuration(monkeypatch, capsys):
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-001"])
+    with (
+        patch(
+            "scripts.investigate.run_investigation", return_value=create_record()
+        ) as run,
+        patch("scripts.investigate.load_live_evidence_config") as config,
+        patch("scripts.investigate.build_live_runtime") as build,
+    ):
+        main()
+    run.assert_called_once_with(incident_id="INC-001", max_tool_calls=6)
+    config.assert_not_called()
+    build.assert_not_called()
+    assert "experiments/results/INC-001-agent.json" in capsys.readouterr().out
+
+
+def test_fixture_cli_missing_incident_exits_with_code_two(monkeypatch, capsys):
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-999"])
+    with (
+        patch(
+            "scripts.investigate.run_investigation",
+            side_effect=FileNotFoundError("Incident not found: INC-999"),
+        ),
+        pytest.raises(SystemExit) as error,
+    ):
+        main()
+    assert error.value.code == 2
+    assert "Incident not found: INC-999" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "services",
+    [
+        [],
+        [
+            "--suspected-service",
+            " checkout-service ",
+            "--suspected-service",
+            "payment-service",
+        ],
+    ],
+)
+def test_live_cli_creates_incident_and_renders_runtime_record(
+    monkeypatch, capsys, live_config, services
+):
+    from scripts.investigate import main
+
+    record = create_record()
+    record.incident_id = "INC-RUNTIME-123"
+    output_path = Path("experiments/results/live/INC-RUNTIME-123-agent.json")
+    monkeypatch.setattr("sys.argv", ["investigate.py", *live_args(), *services])
+    with (
+        patch("scripts.investigate.load_dotenv") as dotenv,
+        patch(
+            "scripts.investigate.load_live_evidence_config", return_value=live_config
+        ) as config,
+        patch(
+            "scripts.investigate.run_live_investigation",
+            return_value=(record, output_path),
+        ) as run,
+        patch("scripts.investigate.load_incident") as load,
+    ):
+        main()
+    incident, passed_config, budget = run.call_args.args
+    assert incident.id.startswith("INC-RUNTIME-")
+    assert incident.title == "Checkout failures"
+    assert incident.description == "Requests time out"
+    assert incident.start_time.utcoffset().total_seconds() == 19800
+    assert incident.suspected_services == (
+        ["checkout-service", "payment-service"] if services else []
+    )
+    assert passed_config is live_config
+    assert budget == 6
+    dotenv.assert_called_once_with()
+    config.assert_called_once_with()
+    load.assert_not_called()
+    output = capsys.readouterr().out
+    assert record.incident_id in output
+    assert str(output_path) in output
+    assert "Final RCA" in output
+
+
+def test_live_cli_missing_config_exits_before_activation(monkeypatch, capsys):
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", *live_args()])
+    with (
+        patch("scripts.investigate.load_dotenv"),
+        patch("os.environ", {}),
+        patch("scripts.investigate.activate_live_runtime") as activate,
+        patch("scripts.investigate.run_agent_experiment") as run,
+        pytest.raises(SystemExit) as error,
+    ):
+        main()
+    assert error.value.code == 2
+    activate.assert_not_called()
+    run.assert_not_called()
+    assert "Invalid live input or configuration" in capsys.readouterr().err
+
+
+def test_live_cli_execution_failure_exits_with_code_one(
+    monkeypatch, capsys, live_config
+):
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", *live_args()])
+    with (
+        patch("scripts.investigate.load_dotenv"),
+        patch(
+            "scripts.investigate.load_live_evidence_config", return_value=live_config
+        ),
+        patch(
+            "scripts.investigate.run_live_investigation",
+            side_effect=RuntimeError("Provider unavailable"),
+        ),
+        pytest.raises(SystemExit) as error,
+    ):
+        main()
+    assert error.value.code == 1
+    output = capsys.readouterr()
+    assert "Live investigation failed: Provider unavailable" in output.err
+    assert not output.out
+
+
+def test_live_cli_registers_shared_registry_and_activates_before_agent(live_config):
+    from scripts.investigate import run_live_investigation
+    from traceroot.bootstrap import build_live_runtime
+    from traceroot.intake.service import create_incident
+    from traceroot.tools import interface
+    from traceroot.tools.models import ToolName
+
+    incident = create_incident(
+        "Failure", "Requests time out", datetime(2026, 10, 3, tzinfo=UTC)
+    )
+    runtime = build_live_runtime(live_config)
+    previous = interface._default_backend
+    record = create_record()
+
+    def run(incident, output_path, max_tool_calls):
+        assert runtime.incident_registry.get(incident.id) is incident
+        assert runtime.router._incident_registry is runtime.incident_registry
+        assert runtime.live_backend.incident_registry is runtime.incident_registry
+        assert interface._default_backend is runtime.router
+        assert interface.execute_tool(ToolName.LOGS, incident.id) == ["LIVE-EVIDENCE"]
+        assert (
+            output_path
+            == Path("experiments/results/live") / f"{incident.id}-agent.json"
+        )
+        assert max_tool_calls == 4
+        return record
+
+    with (
+        patch.object(interface, "_default_backend", previous),
+        patch("scripts.investigate.build_live_runtime", return_value=runtime) as build,
+        patch.object(
+            runtime.live_backend.logs_provider, "query", return_value=["LIVE-EVIDENCE"]
+        ),
+        patch("scripts.investigate.run_agent_experiment", side_effect=run),
+    ):
+        result, path = run_live_investigation(incident, live_config, 4)
+    assert interface._default_backend is previous
+    assert result is record
+    assert path.parent == Path("experiments/results/live")
+    build.assert_called_once_with(live_config)
+
+
+def test_live_cli_runner_constructs_runtime_incident_state(live_config):
+    from scripts.investigate import run_live_investigation
+    from traceroot.intake.service import create_incident
+    from traceroot.tools import interface
+
+    incident = create_incident(
+        "Failure", "Requests time out", datetime(2026, 10, 3, tzinfo=UTC)
+    )
+    record = create_record()
+
+    def final_rca(state, llm_usage):
+        state.final_result = record.result.model_copy(
+            update={"incident_id": incident.id}
+        )
+        return state
+
+    with (
+        patch.object(interface, "_default_backend", interface._default_backend),
+        patch("traceroot.experiments.agent.generate_hypotheses", return_value=[]),
+        patch(
+            "traceroot.experiments.agent.investigate",
+            side_effect=lambda state, **kwargs: state,
+        ) as investigate,
+        patch(
+            "traceroot.experiments.agent.verify_hypotheses",
+            side_effect=lambda state, **kwargs: state,
+        ),
+        patch("traceroot.experiments.agent.generate_final_rca", side_effect=final_rca),
+        patch("traceroot.experiments.agent.save_agent_experiment_record") as save,
+    ):
+        result, path = run_live_investigation(incident, live_config, 4)
+    state = investigate.call_args.kwargs["state"]
+    assert state.incident is incident
+    assert investigate.call_args.kwargs["max_tool_calls"] == 4
+    assert "tool_executor" not in investigate.call_args.kwargs
+    assert result.incident_id == incident.id
+    save.assert_called_once_with(result, path)
+
+
+@pytest.mark.parametrize("flag", ["--help", "--getting-started"])
+def test_cli_help_requires_no_live_configuration(flag, monkeypatch, capsys):
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", flag])
+    with (
+        patch("scripts.investigate.load_live_evidence_config") as config,
+        pytest.raises(SystemExit) as error,
+    ):
+        main()
+    assert error.value.code == 0
+    config.assert_not_called()
+    output = capsys.readouterr().out
+    assert "--live" in output
+    assert "--start-time" in output
