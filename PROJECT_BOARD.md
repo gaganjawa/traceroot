@@ -1006,6 +1006,7 @@ MCP must not delay the core experiment.
 | TR-045C2 | Live Prometheus Metrics | — | ✅ DONE |
 | TR-045C3 | Live GitHub Deployments | — | ✅ DONE |
 | TR-045C4 | Live GitHub Code Changes | — | ✅ DONE |
+| TR-045D | Live Backend Routing | — | ✅ DONE |
 | TR-046 | Simple Investigation UI | 2h | ✅ DONE |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
@@ -1050,10 +1051,10 @@ The runtime-generated incident should use the same `Incident` domain contract as
 ### TR-045 — Live Evidence Integrations
 
 Status:
-- TR-045A, TR-045B, and TR-045C1 through TR-045C4 complete
+- TR-045A, TR-045B, TR-045C1 through TR-045C4, and TR-045D complete
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- Latest full project validation: **563 passed** before any new routing ticket work, as reported in the project handoff; not rerun for this documentation update
-- End-to-end live investigation/backend routing remains future work; no routing ticket started
+- Latest full project validation: **575 passed** at TR-045D completion, as reported in the project handoff; not rerun for this documentation update
+- Live backend routing complete; runtime provider/bootstrap configuration and user-facing live-mode wiring remain future work
 
 Goal:
 
@@ -1119,6 +1120,30 @@ Completed:
 Completed:
 - GitHub commits mapped to code-change evidence
 - Real live GitHub commits smoke test succeeded
+
+### TR-045D — Live Backend Routing
+
+Completed:
+- Added `EvidenceBackendRouter`
+- Registered incidents in `RuntimeIncidentRegistry` route to `LiveEvidenceBackend`; unregistered incidents route to `FixtureEvidenceBackend`
+- Routing uses registry membership, not incident ID naming/prefix
+- Added `RuntimeIncidentRegistry.contains()`
+- Added `configure_backend(...)` seam in `tools/interface.py`
+- Existing `execute_tool(...)` public contract preserved
+- Fixture behavior remains the default when no router is configured
+- Agent and MCP code unchanged
+- Runtime provider/bootstrap configuration and user-facing live-mode wiring remain pending
+
+Recorded validation at ticket completion:
+- Router/interface focused tests: **20 passed**
+- Full project validation: **575 passed**
+- Ruff formatting and linting passed
+- Routing smoke passed
+
+Smoke test:
+- Fixture path: `INC-001` returned 4 evidence entries: `LOG-001-01`, `LOG-001-02`, `LOG-001-03`, `LOG-001-07`
+- Live-routing path: registered runtime incident routed to the configured live backend and returned `["LIVE-EVIDENCE"]`
+- Final smoke message: `TR-045D routing smoke passed`
 
 ### TR-046 — Simple Investigation UI
 
@@ -1207,6 +1232,7 @@ No first-release tickets in progress.
 - TR-045C2 — Live Prometheus Metrics
 - TR-045C3 — Live GitHub Deployments
 - TR-045C4 — Live GitHub Code Changes
+- TR-045D — Live Backend Routing
 - TR-046 — Simple Investigation UI
 
 ## 🟣 Stretch
@@ -1215,7 +1241,7 @@ No outstanding stretch tickets.
 
 ## 🔵 Extended Scope
 
-- TR-045 — Live Evidence Integrations (backend foundation and providers complete; end-to-end routing remains future work)
+- TR-045 — Live Evidence Integrations (backend foundation, providers, and routing complete; runtime provider/bootstrap configuration and user-facing live-mode wiring remain future work)
 
 ---
 
@@ -1253,8 +1279,9 @@ Current state:
 - TR-044 Live Incident Intake complete
 - TR-045A Evidence Backend Abstraction and TR-045B Live Evidence Backend Foundation complete
 - TR-045C1 Live Loki Logs, TR-045C2 Live Prometheus Metrics, TR-045C3 Live GitHub Deployments, and TR-045C4 Live GitHub Code Changes complete
+- TR-045D Live Backend Routing complete; registry membership selects the live or fixture backend
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- **563 passed** in the latest full test run before any new routing ticket work (reported in the project handoff; not rerun for this documentation update)
+- **575 passed** in the latest full test run at TR-045D completion (reported in the project handoff; not rerun for this documentation update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1293,7 +1320,7 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-045 — Live Evidence Integrations: end-to-end live investigation/backend routing remains future work; no routing ticket started
+1. TR-045 — Live Evidence Integrations: runtime provider/bootstrap configuration and user-facing live-mode wiring remain future work; live backend routing complete
 
 Known limitations retained after evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
@@ -1306,4 +1333,4 @@ Known limitations retained after evaluation:
 
 Extended scope after the core capstone:
 - TR-044 — Live Incident Intake (complete)
-- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4 complete; end-to-end routing remains future work)
+- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D complete; runtime provider/bootstrap configuration and user-facing live-mode wiring remain future work)
