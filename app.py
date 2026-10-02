@@ -6,18 +6,25 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import streamlit as st
+from dotenv import load_dotenv
+from httpx import HTTPError
 from openai import OpenAIError
+from pydantic import ValidationError
 
+from traceroot.config import load_live_evidence_config
 from traceroot.data.loader import load_incident
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI
 from traceroot.ui.helpers import (
     discover_incidents,
     evaluate_result,
     new_incident,
+    new_live_incident,
     run_investigation,
+    run_live_investigation,
 )
 
 logger = logging.getLogger(__name__)
+load_dotenv()
 
 st.set_page_config(page_title="TraceRoot", layout="wide")
 st.title("TraceRoot")
@@ -29,8 +36,9 @@ with st.sidebar.expander("Help / Getting Started", expanded=True):
 Set `OPENAI_API_KEY` in `.env` or your environment before running.
 Investigations and evaluation make model API calls.
 
-1. **Choose or enter an incident.** Start with an existing incident to use its
-   local evidence. New incidents currently have no connected operational evidence.
+1. **Choose or enter an incident.** Existing Evaluation Incident uses local
+   evidence. Live Incident queries your configured live sources. New Incident
+   remains a demo with no connected operational evidence.
 2. **Set the tool budget.** `max_tool_calls` caps evidence queries (default 6),
    not all model requests. The agent may stop earlier.
 3. **Start Investigation.** Wait for the completed result.
@@ -46,7 +54,7 @@ Investigations and evaluation make model API calls.
 
 - **Hypothesis:** a possible cause. OPEN = unresolved, SUPPORTED = backed by
   evidence, REJECTED = not supported after verification.
-- **Tool Call:** one query of local logs, metrics, deployments, or code changes.
+- **Tool Call:** one query of local or live logs, metrics, deployments, or code changes.
 - **Evidence ID:** an identifier for a returned record, linking a claim to evidence.
 - **Stop Reason:** why queries ended: model choice (`model_stop`), budget reached
   (`tool_budget_exhausted`), repeated query blocked (`duplicate_selection`), or
@@ -60,8 +68,11 @@ Investigations and evaluation make model API calls.
  the model's conclusions can vary between runs.
 
 Completed results are saved to `experiments/results/ui/<unique-id>-agent.json`.
+Live results are saved to `experiments/results/live/<runtime-id>-agent.json`.
 """)
-mode = st.sidebar.selectbox("Mode", ["Existing Evaluation Incident", "New Incident"])
+mode = st.sidebar.selectbox(
+    "Mode", ["Existing Evaluation Incident", "New Incident", "Live Incident"]
+)
 st.sidebar.write("Model:", LLM_MODEL_GPT_5_4_MINI)
 budget = st.sidebar.number_input("max_tool_calls", min_value=1, value=6, step=1)
 incident = None
@@ -93,7 +104,7 @@ if mode == "Existing Evaluation Incident":
                 "The selected incident is missing or invalid. Check its incident.json file."
             )
             incident = None
-else:
+elif mode == "New Incident":
     st.info(
         "New incidents have no operational evidence source connected. The existing tools will return empty results; any RCA is ungrounded until evidence is supplied."
     )
@@ -111,12 +122,55 @@ else:
             incident = new_incident(title, description, start_time, services)
         except ValueError:
             st.error("Enter a title, description, and valid ISO 8601 start time.")
+else:
+    st.info(
+        "Live Incident uses the source settings in your environment or .env file. "
+        "Set TRACEROOT_LOKI_BASE_URL, TRACEROOT_PROMETHEUS_BASE_URL, "
+        "TRACEROOT_GITHUB_REPO, and TRACEROOT_GITHUB_SERVICE before investigating."
+    )
+    if "live_start_time" not in st.session_state:
+        st.session_state["live_start_time"] = datetime.now(UTC).isoformat(
+            timespec="seconds"
+        )
+    with st.form("live_incident"):
+        title = st.text_input("Title", key="live_title")
+        description = st.text_area("Description", key="live_description")
+        start_time = st.text_input(
+            "Start time (ISO 8601, include timezone)", key="live_start_time"
+        )
+        services = st.text_input(
+            "Suspected services (optional, comma-separated)", key="live_services"
+        )
+        start = st.form_submit_button("Start Investigation", type="primary")
+    if start:
+        try:
+            incident = new_live_incident(title, description, start_time, services)
+        except ValueError:
+            st.error(
+                "Enter a title, description, and valid ISO 8601 start time with a timezone."
+            )
 
 context = (mode, str(incident_path))
 if st.session_state.get("context") != context or start:
     st.session_state.pop("completed", None)
     st.session_state.pop("evaluation", None)
+    st.session_state.pop("completed_trace_path", None)
     st.session_state["context"] = context
+
+live_config = None
+if start and incident is not None and mode == "Live Incident":
+    try:
+        live_config = load_live_evidence_config()
+    except ValidationError as exc:
+        invalid_fields = ", ".join(
+            str(error["loc"][0])
+            for error in exc.errors(include_input=False, include_context=False)
+        )
+        st.error(
+            f"Live configuration is missing or invalid: {invalid_fields}. "
+            "Check the TRACEROOT_* settings in .env or your environment."
+        )
+        incident = None
 
 if start and incident is not None:
     if not os.getenv("OPENAI_API_KEY", "").strip():
@@ -126,25 +180,55 @@ if start and incident is not None:
     else:
         try:
             with st.spinner("Investigating…"):
-                record = run_investigation(
-                    incident, int(budget), is_new=mode == "New Incident"
-                )
+                if mode == "Live Incident":
+                    record, trace_path = run_live_investigation(
+                        incident, live_config, int(budget)
+                    )
+                    st.session_state["completed_trace_path"] = trace_path
+                else:
+                    record = run_investigation(
+                        incident, int(budget), is_new=mode == "New Incident"
+                    )
             st.session_state["completed"] = (incident, record, incident_path)
         except FileNotFoundError:
-            st.error("Incident evidence files are missing. Check the incident dataset.")
+            if mode == "Live Incident":
+                st.error(
+                    "Live investigation files could not be accessed. Check the result directory."
+                )
+            else:
+                st.error(
+                    "Incident evidence files are missing. Check the incident dataset."
+                )
         except OpenAIError:
             st.error(
                 "The LLM request failed. Check your API credentials, connectivity, and model configuration, then retry."
             )
-        except Exception:
-            logger.exception("Investigation failed")
+        except HTTPError:
             st.error(
-                "Investigation failed. Check the dataset and model configuration, then retry."
+                "The evidence request failed. Check source settings, access, and connectivity, then retry."
             )
+        except Exception as exc:
+            logger.exception("Investigation failed")
+            if mode == "Live Incident":
+                if isinstance(exc, ValueError) and str(exc) == (
+                    "No evidence gathered for RCA generation."
+                ):
+                    st.error(
+                        "No evidence was gathered for this incident. Check the incident "
+                        "time, service leads, and live source configuration."
+                    )
+                else:
+                    st.error(
+                        "Live investigation failed. Check live source and model configuration, then retry."
+                    )
+            else:
+                st.error(
+                    "Investigation failed. Check the dataset and model configuration, then retry."
+                )
 
 if completed := st.session_state.get("completed"):
     completed_incident, record, frozen_path = completed
-    if mode == "New Incident":
+    if mode != "Existing Evaluation Incident":
         st.subheader("Incident")
         st.write("Title:", completed_incident.title)
         st.write("Description:", completed_incident.description)
@@ -153,6 +237,7 @@ if completed := st.session_state.get("completed"):
             "Suspected services:",
             ", ".join(completed_incident.suspected_services) or "None",
         )
+    st.write("Incident ID:", record.incident_id)
     st.caption(
         f"Model: {record.model} · Execution latency: {record.latency_ms:,.0f} ms"
     )
@@ -190,6 +275,8 @@ if completed := st.session_state.get("completed"):
         else "Not provided",
     )
     st.write("Evidence IDs:", ", ".join(record.result.evidence_ids) or "None")
+    if trace_path := st.session_state.get("completed_trace_path"):
+        st.write("Trace saved to:", str(trace_path))
 
     can_evaluate = (
         frozen_path is not None

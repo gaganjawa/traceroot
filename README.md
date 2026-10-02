@@ -144,15 +144,21 @@ From the repository root, install dependencies with `uv sync`, configure
 uv run streamlit run app.py
 ```
 
-Choose an existing evaluation incident or enter a new incident, set the tool-call
-budget, and click **Start Investigation**. The UI uses the existing agent experiment
-runner and displays hypotheses, tool observations, stop reasoning, and the final
-RCA. Completed experiment records are saved with unique filenames under
-`experiments/results/ui/`.
+Choose **Existing Evaluation Incident** to investigate a fixture, or **Live Incident**
+to investigate your configured live sources. Set the tool-call budget and click
+**Start Investigation**. The UI uses the existing agent experiment runner and
+displays the incident ID, hypotheses, tool observations, evidence IDs, stop
+reasoning, and final RCA with confidence. Fixture/demo results are saved with
+unique filenames under `experiments/results/ui/`.
 
-New incidents require no manual JSON files. Since operational tools currently
-read local datasets only, manually created incidents have no operational evidence
-or live telemetry, and their RCA should be treated as ungrounded.
+For **Live Incident**, configure the environment settings listed under
+[Live CLI investigations](#live-cli-investigations), then enter a title,
+description, timezone-aware ISO start time, and optional comma-separated suspected
+services. Live results are saved to
+`experiments/results/live/<runtime-id>-agent.json`; the UI displays the saved path.
+
+**New Incident** remains a demo that requires no manual JSON files and supplies
+empty local evidence. Its no-evidence guardrail prevents final RCA generation.
 
 For completed frozen incidents, **Evaluate Result** invokes the existing evaluation
 runner and displays its available metrics and execution measurements. Ground truth

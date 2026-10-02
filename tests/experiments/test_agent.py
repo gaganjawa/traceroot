@@ -1,20 +1,26 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from traceroot.agent.investigation import ToolSelection
 from traceroot.agent.state import (
     Hypothesis,
     HypothesisStatus,
     InvestigationState,
     ToolCallRecord,
 )
+from traceroot.bootstrap import build_live_runtime
+from traceroot.config import LiveEvidenceConfig
+from traceroot.data.models import LogEntry
 from traceroot.domain.incident import Incident
 from traceroot.domain.rca import RCAResult
 from traceroot.experiments.agent import run_agent_experiment
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI
 from traceroot.llm.usage import LLMUsage
+from traceroot.tools import interface
+from traceroot.tools.models import ToolName
 
 
 def create_test_incident() -> Incident:
@@ -719,3 +725,209 @@ def test_run_agent_experiment_preserves_unavailable_llm_usage(
     assert record.output_tokens == output_tokens
     assert record.llm_calls == 1
     assert record.estimated_cost_usd is None
+
+
+@patch("traceroot.experiments.agent.save_agent_experiment_record")
+@patch("traceroot.experiments.agent.generate_final_rca")
+@patch("traceroot.experiments.agent.verify_hypotheses")
+@patch("traceroot.experiments.agent.investigate")
+@patch("traceroot.experiments.agent.generate_hypotheses")
+def test_run_agent_experiment_preserves_default_investigate_call(
+    mock_generate_hypotheses,
+    mock_investigate,
+    mock_verify_hypotheses,
+    mock_generate_final_rca,
+    mock_save,
+):
+    incident = create_test_incident()
+    mock_generate_hypotheses.return_value = create_test_hypotheses()
+    mock_investigate.side_effect = lambda state, max_tool_calls, llm_usage: state
+    mock_verify_hypotheses.side_effect = lambda state, llm_usage: state
+    mock_generate_final_rca.return_value = create_final_state()
+
+    record = run_agent_experiment(incident, Path("agent.json"), 4)
+
+    assert set(mock_investigate.call_args.kwargs) == {
+        "state",
+        "max_tool_calls",
+        "llm_usage",
+    }
+    assert mock_investigate.call_args.kwargs["max_tool_calls"] == 4
+    assert mock_investigate.call_args.kwargs["state"].incident is incident
+    mock_save.assert_called_once_with(record, Path("agent.json"))
+
+
+@patch("traceroot.experiments.agent.save_agent_experiment_record")
+@patch("traceroot.experiments.agent.generate_final_rca")
+@patch("traceroot.experiments.agent.verify_hypotheses")
+@patch("traceroot.experiments.agent.investigate")
+@patch("traceroot.experiments.agent.generate_hypotheses")
+def test_run_agent_experiment_forwards_injected_tool_executor(
+    mock_generate_hypotheses,
+    mock_investigate,
+    mock_verify_hypotheses,
+    mock_generate_final_rca,
+    mock_save,
+):
+    incident = create_test_incident()
+    executor = MagicMock()
+    mock_generate_hypotheses.return_value = create_test_hypotheses()
+    mock_investigate.side_effect = (
+        lambda state, max_tool_calls, llm_usage, tool_executor: state
+    )
+    mock_verify_hypotheses.side_effect = lambda state, llm_usage: state
+    mock_generate_final_rca.return_value = create_final_state()
+
+    record = run_agent_experiment(
+        incident,
+        Path("agent.json"),
+        4,
+        tool_executor=executor,
+    )
+
+    assert mock_investigate.call_args.kwargs["tool_executor"] is executor
+    assert mock_investigate.call_args.kwargs["state"].incident is incident
+    usage = mock_generate_hypotheses.call_args.kwargs["llm_usage"]
+    assert mock_investigate.call_args.kwargs["llm_usage"] is usage
+    assert mock_verify_hypotheses.call_args.kwargs["llm_usage"] is usage
+    assert mock_generate_final_rca.call_args.kwargs["llm_usage"] is usage
+    mock_save.assert_called_once_with(record, Path("agent.json"))
+
+
+@patch("httpx.get", side_effect=AssertionError("Unexpected external HTTP call"))
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+@patch("traceroot.experiments.agent.save_agent_experiment_record")
+@patch("traceroot.experiments.agent.generate_final_rca")
+@patch("traceroot.experiments.agent.verify_hypotheses")
+@patch("traceroot.experiments.agent.generate_hypotheses")
+def test_run_agent_experiment_keeps_runtime_router_executors_isolated(
+    mock_generate_hypotheses,
+    mock_verify_hypotheses,
+    mock_generate_final_rca,
+    mock_save,
+    mock_get_llm_client,
+    mock_execute_tool,
+    mock_http_get,
+):
+    incident = create_test_incident()
+    config = LiveEvidenceConfig(
+        loki_base_url="http://loki.example",
+        prometheus_base_url="http://prometheus.example",
+        github_repo="example/app",
+        github_service="checkout-service",
+    )
+    mock_generate_hypotheses.side_effect = lambda incident, llm_usage: (
+        create_test_hypotheses()
+    )
+    mock_verify_hypotheses.side_effect = lambda state, llm_usage: state
+
+    def set_final_rca(state, llm_usage):
+        state.final_result = RCAResult(
+            incident_id=state.incident.id,
+            root_cause="Database connection timeout",
+            affected_service="checkout-service",
+            evidence_ids=state.evidence_ids,
+            explanation="The log records a database connection timeout.",
+        )
+        return state
+
+    mock_generate_final_rca.side_effect = set_final_rca
+    mock_get_llm_client.return_value.responses.parse.return_value = MagicMock(
+        output_parsed=ToolSelection(
+            tool_name=ToolName.LOGS,
+            service="checkout-service",
+            reasoning="Inspect connection timeouts.",
+        ),
+        usage=None,
+    )
+    original_backend = interface._default_backend
+    runtimes = [build_live_runtime(config), build_live_runtime(config)]
+
+    for index, runtime in enumerate(runtimes):
+        runtime.incident_registry.register(incident)
+        entry = LogEntry(
+            id=f"LOG-LIVE-SESSION-{index}",
+            timestamp=incident.start_time,
+            service="checkout-service",
+            level="ERROR",
+            message="Database connection timeout",
+        )
+        output_path = Path(f"session-{index}.json")
+        with patch.object(
+            runtime.live_backend.logs_provider, "query", return_value=[entry]
+        ) as provider_query:
+            record = run_agent_experiment(
+                incident,
+                output_path,
+                max_tool_calls=1,
+                tool_executor=runtime.router.query,
+            )
+
+        provider_query.assert_called_once_with(
+            incident=incident, service="checkout-service"
+        )
+        assert record.evidence_ids == [entry.id]
+        assert record.tool_history[0].evidence_ids == [entry.id]
+        assert record.tool_history[0].service == "checkout-service"
+        assert record.tool_history[0].observations == [str(entry)]
+        assert record.result.evidence_ids == [entry.id]
+        assert record.stop_reason == "tool_budget_exhausted"
+        assert record.llm_calls == 1
+        assert interface._default_backend is original_backend
+        mock_save.assert_called_with(record, output_path)
+
+    assert runtimes[0].incident_registry is not runtimes[1].incident_registry
+    assert mock_save.call_count == 2
+    mock_execute_tool.assert_not_called()
+    mock_http_get.assert_not_called()
+
+
+@patch("httpx.get", side_effect=AssertionError("Unexpected external HTTP call"))
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+@patch("traceroot.experiments.agent.save_agent_experiment_record")
+@patch("traceroot.experiments.agent.generate_final_rca")
+@patch("traceroot.experiments.agent.verify_hypotheses")
+@patch("traceroot.experiments.agent.generate_hypotheses")
+def test_run_agent_experiment_propagates_injected_executor_failure(
+    mock_generate_hypotheses,
+    mock_verify_hypotheses,
+    mock_generate_final_rca,
+    mock_save,
+    mock_get_llm_client,
+    mock_execute_tool,
+    mock_http_get,
+):
+    incident = create_test_incident()
+    executor = MagicMock(side_effect=RuntimeError("Live provider unavailable"))
+    mock_generate_hypotheses.return_value = create_test_hypotheses()
+    mock_get_llm_client.return_value.responses.parse.return_value = MagicMock(
+        output_parsed=ToolSelection(
+            tool_name=ToolName.LOGS,
+            service="checkout-service",
+            reasoning="Inspect timeouts.",
+        ),
+        usage=None,
+    )
+    original_backend = interface._default_backend
+
+    with pytest.raises(RuntimeError, match="Live provider unavailable"):
+        run_agent_experiment(
+            incident,
+            Path("agent.json"),
+            max_tool_calls=1,
+            tool_executor=executor,
+        )
+
+    executor.assert_called_once_with(
+        tool_name=ToolName.LOGS,
+        incident_id=incident.id,
+        service="checkout-service",
+    )
+    assert interface._default_backend is original_backend
+    mock_execute_tool.assert_not_called()
+    mock_http_get.assert_not_called()
+    mock_verify_hypotheses.assert_not_called()
+    mock_generate_final_rca.assert_not_called()
+    mock_save.assert_not_called()

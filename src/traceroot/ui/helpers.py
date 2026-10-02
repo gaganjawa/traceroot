@@ -5,9 +5,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
 
+from traceroot.bootstrap import build_live_runtime
+from traceroot.config import LiveEvidenceConfig
 from traceroot.domain.incident import Incident
 from traceroot.experiments.agent import run_agent_experiment
 from traceroot.experiments.models import AgentExperimentRecord
+from traceroot.intake.service import create_incident
 
 
 def discover_incidents(directory: Path) -> list[Path]:
@@ -27,6 +30,20 @@ def new_incident(
         id=f"NEW-{uuid4().hex}",
         title=title.strip(),
         description=description.strip(),
+        start_time=datetime.fromisoformat(start_time.strip()),
+        suspected_services=[
+            service.strip() for service in services.split(",") if service.strip()
+        ],
+    )
+
+
+def new_live_incident(
+    title: str, description: str, start_time: str, services: str
+) -> Incident:
+    """Validate live form input through the runtime incident intake service."""
+    return create_incident(
+        title=title,
+        description=description,
         start_time=datetime.fromisoformat(start_time.strip()),
         suspected_services=[
             service.strip() for service in services.split(",") if service.strip()
@@ -59,6 +76,27 @@ def run_investigation(
         return run_agent_experiment(
             incident, output_path, max_tool_calls=max_tool_calls
         )
+
+
+def run_live_investigation(
+    incident: Incident,
+    config: LiveEvidenceConfig,
+    max_tool_calls: int,
+) -> tuple[AgentExperimentRecord, Path]:
+    """Run with an incident-local router without changing process-wide routing."""
+    if max_tool_calls <= 0:
+        raise ValueError("max_tool_calls must be a positive integer.")
+
+    runtime = build_live_runtime(config)
+    runtime.incident_registry.register(incident)
+    output_path = Path("experiments/results/live") / f"{incident.id}-agent.json"
+    record = run_agent_experiment(
+        incident=incident,
+        output_path=output_path,
+        max_tool_calls=max_tool_calls,
+        tool_executor=runtime.router.query,
+    )
+    return record, output_path
 
 
 def evaluate_result(record: AgentExperimentRecord, incident_path: Path):
