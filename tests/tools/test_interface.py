@@ -2,7 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from traceroot.tools.interface import execute_tool
+from traceroot.tools.backend import FixtureEvidenceBackend
+from traceroot.tools.interface import configure_backend, execute_tool
 from traceroot.tools.models import ToolName
 
 
@@ -132,3 +133,48 @@ def test_execute_tool_rejects_unknown_tool():
             incident_id="INC-001",
             service="checkout-service",
         )
+
+
+@patch("traceroot.tools.interface._default_backend")
+def test_configure_backend_replaces_default_backend(mock_default_backend):
+    mock_default_backend.query.return_value = ["evidence"]
+
+    try:
+        configure_backend(mock_default_backend)
+
+        result = execute_tool(
+            tool_name=ToolName.LOGS,
+            incident_id="INC-001",
+            service="checkout-service",
+        )
+
+        assert result == ["evidence"]
+
+        mock_default_backend.query.assert_called_once_with(
+            tool_name=ToolName.LOGS,
+            incident_id="INC-001",
+            service="checkout-service",
+        )
+    finally:
+        configure_backend(FixtureEvidenceBackend())
+
+
+@patch("traceroot.tools.interface._default_backend")
+def test_execute_tool_uses_configured_backend(mock_default_backend):
+    mock_default_backend.query.return_value = ["metric1"]
+
+    configure_backend(mock_default_backend)
+
+    result = execute_tool(
+        tool_name=ToolName.METRICS,
+        incident_id="INC-002",
+        service="payment-service",
+    )
+
+    mock_default_backend.query.assert_called_once_with(
+        tool_name=ToolName.METRICS,
+        incident_id="INC-002",
+        service="payment-service",
+    )
+
+    assert result == ["metric1"]

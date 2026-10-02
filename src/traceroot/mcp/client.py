@@ -32,7 +32,7 @@ def execute_mcp_tool(
     tool_name: ToolName,
     incident_id: str,
     service: str | None = None,
-) -> list[MCPToolResult]:
+) -> list[BaseModel]:
     result = asyncio.run(
         mcp.call_tool(
             MCP_TOOL_NAMES[tool_name],

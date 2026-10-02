@@ -1,7 +1,12 @@
-from traceroot.tools.backend import FixtureEvidenceBackend
+from traceroot.tools.backend import EvidenceBackend, FixtureEvidenceBackend
 from traceroot.tools.models import ToolName
 
-_default_backend = FixtureEvidenceBackend()
+_default_backend: EvidenceBackend = FixtureEvidenceBackend()
+
+
+def configure_backend(backend: EvidenceBackend) -> None:
+    global _default_backend
+    _default_backend = backend
 
 
 def execute_tool(

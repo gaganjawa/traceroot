@@ -13,3 +13,6 @@ class RuntimeIncidentRegistry:
             return self._incidents[incident_id]
         except KeyError as exc:
             raise ValueError(f"Runtime incident not found: {incident_id}") from exc
+
+    def contains(self, incident_id: str) -> bool:
+        return incident_id in self._incidents

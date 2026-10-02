@@ -22,7 +22,7 @@ Research Question:
 | Epic 5 — Evaluation Framework | ✅ DONE |
 | Epic 6 — Comparative Experiments | ✅ DONE |
 | Epic 7 — Delivery | ✅ DONE |
-| Epic 8 — MCP Integration | 🟣 STRETCH |
+| Epic 8 — MCP Integration | ✅ DONE |
 | Epic 9 — Extended Production Scope | 🔵 EXTENDED |
 
 ---
@@ -975,8 +975,20 @@ Final submission checklist:
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-042 | MCP Evidence Server | 2h | 🟣 STRETCH |
-| TR-043 | LangGraph ↔ MCP Integration | 1h | 🟣 STRETCH |
+| TR-042 | MCP Evidence Server | 2h | ✅ DONE |
+| TR-043 | Agent ↔ MCP Integration | 1h | ✅ DONE |
+
+### TR-042 — MCP Evidence Server
+
+Completed:
+- MCP evidence server exposing logs, metrics, deployments, and code changes
+- Existing operational evidence tool contracts reused
+
+### TR-043 — Agent ↔ MCP Integration
+
+Completed:
+- Agent integration with MCP evidence tools
+- MCP client support for evidence retrieval during investigation
 
 MCP must not delay the core experiment.
 
@@ -986,13 +998,23 @@ MCP must not delay the core experiment.
 
 | Ticket | Description | Estimate | Status |
 |---|---|---:|---|
-| TR-044 | Live Incident Intake | 1.5h | 🔵 EXTENDED |
+| TR-044 | Live Incident Intake | 1.5h | ✅ DONE |
 | TR-045 | Live Evidence Integrations | 4h+ | 🔵 EXTENDED |
+| TR-045A | Evidence Backend Abstraction | — | ✅ DONE |
+| TR-045B | Live Evidence Backend Foundation | — | ✅ DONE |
+| TR-045C1 | Live Loki Logs | — | ✅ DONE |
+| TR-045C2 | Live Prometheus Metrics | — | ✅ DONE |
+| TR-045C3 | Live GitHub Deployments | — | ✅ DONE |
+| TR-045C4 | Live GitHub Code Changes | — | ✅ DONE |
 | TR-046 | Simple Investigation UI | 2h | ✅ DONE |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
 
 ### TR-044 — Live Incident Intake
+
+Completed:
+- Runtime incident intake using the existing `Incident` domain contract
+- Runtime incident registry for newly received incidents
 
 Goal:
 
@@ -1027,6 +1049,12 @@ The runtime-generated incident should use the same `Incident` domain contract as
 
 ### TR-045 — Live Evidence Integrations
 
+Status:
+- TR-045A, TR-045B, and TR-045C1 through TR-045C4 complete
+- Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
+- Latest full project validation: **563 passed** before any new routing ticket work, as reported in the project handoff; not rerun for this documentation update
+- End-to-end live investigation/backend routing remains future work; no routing ticket started
+
 Goal:
 
 Replace or complement the current file-backed evidence providers with adapters to live operational systems while preserving the existing agent/tool contracts.
@@ -1055,6 +1083,42 @@ Same TraceRoot investigation workflow
 ```
 
 The investigation agent should not need to know whether evidence comes from frozen fixtures or live adapters.
+
+### TR-045A — Evidence Backend Abstraction
+
+Completed:
+- Shared evidence backend abstraction and fixture backend
+- Existing evidence tool contracts and frozen fixture behavior preserved
+
+### TR-045B — Live Evidence Backend Foundation
+
+Completed:
+- Live evidence backend foundation using registered runtime incidents
+- Provider interfaces for live operational evidence
+
+### TR-045C1 — Live Loki Logs
+
+Completed:
+- Live Loki log provider integrated with the live evidence backend
+- Real live Loki logs smoke test succeeded
+
+### TR-045C2 — Live Prometheus Metrics
+
+Completed:
+- Live Prometheus metric provider integrated with the live evidence backend
+- Real live Prometheus metrics smoke test succeeded
+
+### TR-045C3 — Live GitHub Deployments
+
+Completed:
+- GitHub releases mapped to deployment evidence
+- Real live GitHub releases smoke test succeeded
+
+### TR-045C4 — Live GitHub Code Changes
+
+Completed:
+- GitHub commits mapped to code-change evidence
+- Real live GitHub commits smoke test succeeded
 
 ### TR-046 — Simple Investigation UI
 
@@ -1134,17 +1198,24 @@ No first-release tickets in progress.
 - TR-039 — Re-evaluate & Compare
 - TR-040 — README + Architecture + Capstone Report + Results
 - TR-041 — Demo Video / Public Demo
+- TR-042 — MCP Evidence Server
+- TR-043 — Agent ↔ MCP Integration
+- TR-044 — Live Incident Intake
+- TR-045A — Evidence Backend Abstraction
+- TR-045B — Live Evidence Backend Foundation
+- TR-045C1 — Live Loki Logs
+- TR-045C2 — Live Prometheus Metrics
+- TR-045C3 — Live GitHub Deployments
+- TR-045C4 — Live GitHub Code Changes
 - TR-046 — Simple Investigation UI
 
 ## 🟣 Stretch
 
-- TR-042 — MCP Evidence Server
-- TR-043 — LangGraph ↔ MCP Integration
+No outstanding stretch tickets.
 
 ## 🔵 Extended Scope
 
-- TR-044 — Live Incident Intake
-- TR-045 — Live Evidence Integrations
+- TR-045 — Live Evidence Integrations (backend foundation and providers complete; end-to-end routing remains future work)
 
 ---
 
@@ -1178,7 +1249,12 @@ No first-release tickets in progress.
 Current state:
 - TR-001 through TR-041 complete, including TR-026A
 - TR-046 Simple Investigation UI complete
-- **364 tests passing**
+- TR-042 MCP Evidence Server and TR-043 Agent ↔ MCP Integration complete
+- TR-044 Live Incident Intake complete
+- TR-045A Evidence Backend Abstraction and TR-045B Live Evidence Backend Foundation complete
+- TR-045C1 Live Loki Logs, TR-045C2 Live Prometheus Metrics, TR-045C3 Live GitHub Deployments, and TR-045C4 Live GitHub Code Changes complete
+- Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
+- **563 passed** in the latest full test run before any new routing ticket work (reported in the project handoff; not rerun for this documentation update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1217,10 +1293,7 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-042 — MCP Evidence Server (stretch)
-2. TR-043 — LangGraph ↔ MCP Integration (stretch)
-3. TR-044 — Live Incident Intake (extended)
-4. TR-045 — Live Evidence Integrations (extended)
+1. TR-045 — Live Evidence Integrations: end-to-end live investigation/backend routing remains future work; no routing ticket started
 
 Known limitations retained after evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
@@ -1232,5 +1305,5 @@ Known limitations retained after evaluation:
 - Recorded runtime token/cost reporting covers instrumented generation/investigation calls, not all-in embedding and evaluator costs
 
 Extended scope after the core capstone:
-- TR-044 — Live Incident Intake
-- TR-045 — Live Evidence Integrations
+- TR-044 — Live Incident Intake (complete)
+- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4 complete; end-to-end routing remains future work)
