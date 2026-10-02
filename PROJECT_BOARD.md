@@ -1007,7 +1007,7 @@ MCP must not delay the core experiment.
 | TR-045C3 | Live GitHub Deployments | — | ✅ DONE |
 | TR-045C4 | Live GitHub Code Changes | — | ✅ DONE |
 | TR-045D | Live Backend Routing | — | ✅ DONE |
-| TR-045E | Live Provider Bootstrap Configuration | — | ✅ DONE |
+| TR-045E | Live Provider Bootstrap Configuration | — | 🟡 IN PROGRESS |
 | TR-046 | Simple Investigation UI | 2h | ✅ DONE |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
@@ -1052,10 +1052,10 @@ The runtime-generated incident should use the same `Incident` domain contract as
 ### TR-045 — Live Evidence Integrations
 
 Status:
-- TR-045A, TR-045B, TR-045C1 through TR-045C4, TR-045D, and TR-045E complete
+- TR-045A, TR-045B, TR-045C1 through TR-045C4, and TR-045D complete; TR-045E implementation complete, closure pending
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- Latest full project validation: **644 passed** at TR-045E completion; not rerun for this documentation update
-- Live backend routing and runtime provider/bootstrap configuration complete; user-facing live-mode wiring remains future work
+- Latest full project validation: **644 passed** after TR-045E implementation; not rerun for this documentation update
+- Live backend routing complete; runtime provider/bootstrap configuration implemented with external/bootstrap smoke pending; user-facing live-mode wiring remains future work
 
 Goal:
 
@@ -1148,7 +1148,13 @@ Smoke test:
 
 ### TR-045E — Live Provider Bootstrap Configuration
 
-Completed:
+Status:
+- Implementation complete; closure pending
+- External/bootstrap smoke: PENDING (not yet run)
+- Implementation committed as `ce741e1`; local `origin/main` also references this commit, but remote push status was not independently verified for this update
+- Closure requires bootstrap smoke, smoke-output review, commit/push of closure updates, and a final board update
+
+Implementation completed:
 - Added validated `LiveEvidenceConfig` and explicit `load_live_evidence_config(...)` environment loader in `config.py`
 - Added `LiveEvidenceRuntime`, `build_live_runtime(...)`, and separate `activate_live_runtime(...)` in `bootstrap.py`
 - All four live providers constructed from explicit configuration with current provider defaults
@@ -1159,7 +1165,7 @@ Completed:
 - Environment variables documented in `.env.example`
 - Agent/MCP public contracts preserved; CLI/UI live-mode wiring remains pending
 
-Recorded validation at ticket completion:
+Recorded implementation validation:
 - Configuration/bootstrap focused tests: **69 passed**
 - Full project validation: **644 passed**
 - Ruff formatting and linting passed
@@ -1198,6 +1204,8 @@ The UI is a presentation and input layer only; core investigation logic remains 
 ## 🟡 In Progress
 
 No first-release tickets in progress.
+
+- TR-045E — Live Provider Bootstrap Configuration (implementation complete; external/bootstrap smoke and closure pending)
 
 ## ✅ Done
 
@@ -1253,7 +1261,6 @@ No first-release tickets in progress.
 - TR-045C3 — Live GitHub Deployments
 - TR-045C4 — Live GitHub Code Changes
 - TR-045D — Live Backend Routing
-- TR-045E — Live Provider Bootstrap Configuration
 - TR-046 — Simple Investigation UI
 
 ## 🟣 Stretch
@@ -1262,7 +1269,7 @@ No outstanding stretch tickets.
 
 ## 🔵 Extended Scope
 
-- TR-045 — Live Evidence Integrations (backend foundation, providers, routing, and bootstrap configuration complete; user-facing live-mode wiring remains future work)
+- TR-045 — Live Evidence Integrations (backend foundation, providers, and routing complete; bootstrap implementation complete with closure pending; user-facing live-mode wiring remains future work)
 
 ---
 
@@ -1301,9 +1308,9 @@ Current state:
 - TR-045A Evidence Backend Abstraction and TR-045B Live Evidence Backend Foundation complete
 - TR-045C1 Live Loki Logs, TR-045C2 Live Prometheus Metrics, TR-045C3 Live GitHub Deployments, and TR-045C4 Live GitHub Code Changes complete
 - TR-045D Live Backend Routing complete; registry membership selects the live or fixture backend
-- TR-045E Live Provider Bootstrap Configuration complete; construction and activation are explicit separate operations
+- TR-045E Live Provider Bootstrap Configuration implementation complete; external/bootstrap smoke and closure pending
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- **644 passed** in the latest full test run at TR-045E completion (not rerun for this documentation update)
+- **644 passed** in the latest full test run after TR-045E implementation (not rerun for this documentation update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1342,7 +1349,8 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-045 — Live Evidence Integrations: user-facing live-mode wiring remains future work; live backend routing and runtime provider/bootstrap configuration complete
+1. TR-045E — Live Provider Bootstrap Configuration: run external/bootstrap smoke, review smoke output, commit/push closure updates, then update the board
+2. TR-045 — Live Evidence Integrations: user-facing live-mode wiring afterward; live backend routing complete
 
 Known limitations retained after evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
@@ -1355,4 +1363,4 @@ Known limitations retained after evaluation:
 
 Extended scope after the core capstone:
 - TR-044 — Live Incident Intake (complete)
-- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E complete; user-facing live-mode wiring remains future work)
+- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D complete; TR-045E implementation complete with closure pending; user-facing live-mode wiring remains future work)
