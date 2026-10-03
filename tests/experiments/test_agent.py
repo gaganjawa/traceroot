@@ -1,10 +1,13 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from traceroot.agent.grounding import ClaimAssessment, ClaimVerificationReport
 from traceroot.agent.investigation import ToolSelection
+from traceroot.agent.rca import GeneratedFinalRCA
 from traceroot.agent.state import (
     Hypothesis,
     HypothesisStatus,
@@ -931,3 +934,94 @@ def test_run_agent_experiment_propagates_injected_executor_failure(
     mock_verify_hypotheses.assert_not_called()
     mock_generate_final_rca.assert_not_called()
     mock_save.assert_not_called()
+
+
+@pytest.mark.parametrize("final_status", ["supported", "unsupported"])
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+@patch("traceroot.experiments.agent.verify_hypotheses")
+@patch("traceroot.experiments.agent.investigate")
+@patch("traceroot.experiments.agent.generate_hypotheses")
+def test_grounded_rca_preserves_experiment_record_and_usage(
+    mock_hypotheses,
+    mock_investigate,
+    mock_verify_hypotheses,
+    mock_generator,
+    mock_verifier,
+    final_status,
+    tmp_path,
+):
+    state = create_final_state()
+    candidate = GeneratedFinalRCA(
+        **state.final_result.model_dump(exclude={"incident_id"})
+    )
+    state.final_result = None
+    mock_hypotheses.return_value = state.hypotheses
+    mock_investigate.return_value = state
+    mock_verify_hypotheses.side_effect = lambda state, llm_usage: state
+    mock_generator.return_value.responses.parse.return_value = MagicMock(
+        output_parsed=candidate,
+        usage=MagicMock(input_tokens=100, output_tokens=10),
+    )
+    mock_verifier.return_value.responses.parse.side_effect = [
+        MagicMock(
+            output_parsed=ClaimVerificationReport(
+                claims=[
+                    ClaimAssessment(
+                        field="root_cause",
+                        claim=candidate.root_cause,
+                        is_major_causal_claim=True,
+                        status=status,
+                        supporting_evidence_ids=["LOG-001-02"],
+                        reasoning="Assess observed connection acquisition timeouts.",
+                    )
+                ]
+            ),
+            usage=MagicMock(input_tokens=200, output_tokens=20),
+        )
+        for status in ["unsupported", final_status]
+    ]
+    output_path = tmp_path / "grounded-agent.json"
+
+    record = run_agent_experiment(state.incident, output_path)
+
+    persisted = json.loads(output_path.read_text())
+    assert persisted == record.model_dump(mode="json")
+    assert set(persisted) == {
+        "incident_id",
+        "approach",
+        "model",
+        "hypotheses",
+        "evidence_ids",
+        "tool_history",
+        "stop_reason",
+        "stop_reasoning",
+        "result",
+        "latency_ms",
+        "input_tokens",
+        "output_tokens",
+        "llm_calls",
+        "estimated_cost_usd",
+        "timestamp",
+    }
+    assert set(persisted["result"]) == {
+        "incident_id",
+        "root_cause",
+        "affected_service",
+        "evidence_ids",
+        "explanation",
+        "confidence",
+    }
+    assert record.llm_calls == 4
+    assert record.input_tokens == 600
+    assert record.output_tokens == 60
+    assert isinstance(record.result, RCAResult)
+    if final_status == "supported":
+        assert record.result.root_cause == candidate.root_cause
+    else:
+        assert (
+            record.result.root_cause
+            == "Root cause could not be established from the gathered evidence."
+        )
+        assert record.result.confidence is None
+        assert record.result.evidence_ids == []
