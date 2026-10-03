@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
@@ -13,12 +14,15 @@ from traceroot.experiments.models import AgentExperimentRecord
 from traceroot.experiments.persistence import save_agent_experiment_record
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, LLM_PRICING
 from traceroot.llm.usage import LLMUsage
+from traceroot.tools.backend import EvidenceEntry
 
 
 def run_agent_experiment(
     incident: Incident,
     output_path: Path,
     max_tool_calls: int = 6,
+    *,
+    tool_executor: Callable[..., list[EvidenceEntry]] | None = None,
 ) -> AgentExperimentRecord:
 
     start = perf_counter()
@@ -35,10 +39,14 @@ def run_agent_experiment(
         hypotheses=hypotheses,
     )
 
+    executor_kwargs = (
+        {"tool_executor": tool_executor} if tool_executor is not None else {}
+    )
     investigation_state = investigate(
         state=investigation_state,
         max_tool_calls=max_tool_calls,
         llm_usage=llm_usage,
+        **executor_kwargs,
     )
 
     investigation_state = verify_hypotheses(
