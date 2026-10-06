@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
-from traceroot.agent.state import Hypothesis, HypothesisStatus, InvestigationState
+from traceroot.agent.prompt_context import build_evidence_prompt
+from traceroot.agent.state import HypothesisStatus, InvestigationState
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
 from traceroot.llm.usage import LLMUsage, record_response_usage
 
@@ -16,21 +17,18 @@ class HypothesisAssessments(BaseModel):
 
 
 def build_prompt_for_verification(
-    incident,
-    hypotheses: list[Hypothesis],
-    tool_history,
+    state: InvestigationState,
 ) -> str:
     return f"""
     You are evaluating hypotheses for a production incident.
 
     Incident:
-    {incident}
+    {state.incident}
 
     Current hypotheses:
-    {hypotheses}
+    {state.hypotheses}
     
-    Observed evidence from operational tools:
-    {tool_history}
+    {build_evidence_prompt(state)}
 
     For each existing hypothesis, classify it as:
     - open: evidence is insufficient
@@ -48,11 +46,7 @@ def verify_hypotheses(
     llm_usage: LLMUsage | None = None,
 ) -> InvestigationState:
 
-    prompt = build_prompt_for_verification(
-        incident=state.incident,
-        hypotheses=state.hypotheses,
-        tool_history=state.tool_history,
-    )
+    prompt = build_prompt_for_verification(state)
 
     response = get_llm_client().responses.parse(
         model=LLM_MODEL_GPT_5_4_MINI,

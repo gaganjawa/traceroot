@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from traceroot.agent.prompt_context import build_evidence_prompt
 from traceroot.agent.state import InvestigationState, ToolCallRecord
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
 from traceroot.llm.usage import LLMUsage, record_response_usage
@@ -23,11 +24,7 @@ def build_prompt(state: InvestigationState) -> str:
     Current hypotheses:
     {state.hypotheses}
     
-    Evidence IDs gathered:
-    {state.evidence_ids}
-    
-    Previous tool calls and observations:
-    {state.tool_history}
+    {build_evidence_prompt(state)}
     
     Choose the next operational tool that would provide the most useful evidence
     for investigating the current hypotheses.
@@ -53,7 +50,7 @@ def build_prompt(state: InvestigationState) -> str:
     An empty result does not confirm or rule out a cause.
     
     Do not repeat a tool/service combination already present in tool history.
-    Check the full history, including empty calls, before selecting. Avoid
+    Check the full history, including empty calls, in the query ledger before selecting. Avoid
     redundant exploration: changing between service-filtered and all-service
     queries of the same tool can return evidence already gathered. Broaden only
     when you can explain what new evidence the wider scope is likely to add.

@@ -2,6 +2,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from traceroot.agent.context import EvidencePresentation
+from traceroot.agent.prompt_context import build_evidence_prompt
 from traceroot.agent.state import Hypothesis, InvestigationState
 from traceroot.domain.rca import RCAResult
 from traceroot.llm.client import LLM_MODEL_GPT_5_4_MINI, get_llm_client
@@ -166,8 +168,15 @@ def verify_rca_claims(
     candidate: RCAResult,
     context: GroundingContext,
     llm_usage: LLMUsage | None = None,
+    *,
+    state: InvestigationState,
+    presentation: EvidencePresentation | None = None,
 ) -> ClaimVerificationReport:
-    """Independently assess a candidate; leave acceptance and repair to the caller."""
+    """Assess a candidate with the caller's exact view, if supplied.
+
+    Orchestration retains that view for deterministic visibility validation.
+    Direct callers may omit it to keep the existing bounded-prompt behavior.
+    """
     prompt = f"""
 Independently assess the candidate RCA using only the supplied grounding context.
 Do not trust a claim simply because the RCA generator produced it. Do not invent
@@ -205,7 +214,7 @@ Query limitations:
 Queried + zero results means "This completed query returned no matching evidence."
 It does NOT mean "The event definitely did not happen."
 Unqueried tools provide no query result at all. Consider each completed query's
-service scope, returned count, evidence IDs, and global history_index, as well
+service scope, returned count, and global history_index, as well
 as per-tool queried status and unique_evidence_count. service=null does not prove
 universal provider coverage. Stop reasons describe investigation limitations.
 Calls listed in ambiguous_history_indices have mismatched evidence-ID and
@@ -231,11 +240,7 @@ hypothesis marked REJECTED (rejected) in INVESTIGATION HYPOTHESES. Merely mentio
 a rejected hypothesis as rejected is not promotion. OPEN (open) and SUPPORTED
 (supported) labels also do not replace evidence-based assessment.
 
-OBSERVED EVIDENCE
-{context.model_dump_json(include={"observations"})}
-
-QUERY RESULTS / LIMITATIONS
-{context.model_dump_json(include={"tool_summaries", "stop_reason", "stop_reasoning", "ambiguous_history_indices"})}
+{build_evidence_prompt(state, prioritized_evidence_ids=set(candidate.evidence_ids), presentation=presentation)}
 
 INVESTIGATION HYPOTHESES
 Reasoning labels only, not evidence.
@@ -264,6 +269,8 @@ def validate_claim_report(
     candidate: RCAResult,
     context: GroundingContext,
     report: ClaimVerificationReport,
+    *,
+    presentation: EvidencePresentation | None = None,
 ) -> GroundingDecision:
     """Apply grounding policy to a report without changing the candidate.
 
@@ -272,6 +279,13 @@ def validate_claim_report(
     report incorrectly labels them as non-major. Other claims must quote a
     nonempty span from the field they assess. Cited observations must be usable;
     semantic entailment remains the LLM verifier's responsibility.
+
+    With a presentation, an ID is eligible only when EVERY usable occurrence in
+    full context is shown with identical positional association and content.
+    Reports contain IDs, not occurrence selectors: accepting one favorable
+    occurrence while another is hidden would be unsafe. This deliberately also
+    rejects an ID whose exact duplicate occurrences were collapsed by selection.
+    Without a presentation, legacy full-state validation remains unchanged.
     """
     gathered_ids = {
         evidence_id
@@ -299,6 +313,49 @@ def validate_claim_report(
         )
         in gathered_mappings
     }
+    visible_ids: set[str] = set()
+    if presentation is not None:
+        presented_associations = {
+            (
+                item.history_index,
+                item.observation_index,
+                item.tool_name,
+                item.service,
+                item.evidence_id,
+                item.observation,
+            )
+            for item in presentation.observations
+            if item.observation.strip()
+        }
+        # build_grounding_context preserves every observation of aligned calls
+        # in original order, including blanks. Recover each within-call index
+        # without changing the GroundingObservation or persistence schemas.
+        next_index: dict[int, int] = {}
+        not_presented_ids: set[str] = set()
+        for item in context.observations:
+            observation_index = next_index.get(item.history_index, 0)
+            next_index[item.history_index] = observation_index + 1
+            if (
+                not item.observation.strip()
+                or (
+                    item.tool_name,
+                    item.history_index,
+                    item.service,
+                    item.evidence_id,
+                )
+                not in gathered_mappings
+            ):
+                continue
+            if (
+                item.history_index,
+                observation_index,
+                item.tool_name,
+                item.service,
+                item.evidence_id,
+                item.observation,
+            ) not in presented_associations:
+                not_presented_ids.add(item.evidence_id)
+        visible_ids = usable_observation_ids - not_presented_ids
     feedback: list[str] = []
     reviewed_root_cause = False
     candidate_fields = {
@@ -332,6 +389,11 @@ def validate_claim_report(
             feedback.append("unknown_contradicting_evidence_id")
         if (contradicting_ids & gathered_ids) - usable_observation_ids:
             feedback.append("contradicting_evidence_observation_unavailable")
+        if presentation is not None:
+            if supporting_ids - visible_ids:
+                feedback.append("supporting_evidence_not_presented")
+            if contradicting_ids - visible_ids:
+                feedback.append("contradicting_evidence_not_presented")
 
         if claim.status not in set(ClaimSupportStatus):
             feedback.append("invalid_claim_assessment")

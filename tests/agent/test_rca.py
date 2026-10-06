@@ -7,7 +7,18 @@ import pytest
 from openai import APIConnectionError
 from pydantic import ValidationError
 
-from traceroot.agent.grounding import ClaimAssessment, ClaimVerificationReport
+from tests.agent.prompt_helpers import (
+    add_large_history,
+    assert_prompt_evidence,
+    evidence_block,
+)
+from traceroot.agent.context import AgentContextConfig, build_evidence_presentation
+from traceroot.agent.grounding import (
+    ClaimAssessment,
+    ClaimVerificationReport,
+    validate_claim_report,
+    verify_rca_claims,
+)
 from traceroot.agent.rca import (
     GeneratedFinalRCA,
     build_context_from_state,
@@ -453,12 +464,12 @@ def test_repair_generation_uses_grounding_feedback(generator, verifier):
         call.kwargs["input"]
         for call in generator.return_value.responses.parse.call_args_list
     ]
-    assert repair.startswith(original)
+    assert not repair.startswith(original)
     for instruction in [
         "Remove unsupported causal claims",
         "Preserve observed facts",
         "Do not invent evidence",
-        "Use only gathered evidence IDs",
+        "Use only IDs attached to visible evidence observations",
         "Strongest current hypothesis:",
         "at most 0.60",
         "unsupported_major_claim",
@@ -552,3 +563,190 @@ def test_model_json_parse_failure_returns_cautious_rca(generator, verifier, stag
     result = generate_final_rca(create_test_state())
 
     assert_cautious(result.final_result)
+
+
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+def test_initial_rca_prompt_uses_bounded_evidence(generator, verifier):
+    setup_pipeline(generator, verifier, ["supported"])
+    state = add_large_history(create_test_state())
+    before = state.model_dump()
+    generate_final_rca(state)
+    prompt = generator.return_value.responses.parse.call_args_list[0].kwargs["input"]
+    assert assert_prompt_evidence(prompt, state).budget_limited
+    assert state.model_dump(exclude={"final_result"}) == {
+        key: value for key, value in before.items() if key != "final_result"
+    }
+
+
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+def test_repair_prompt_contains_one_bounded_evidence_block(generator, verifier):
+    candidates = setup_pipeline(generator, verifier, ["unsupported", "supported"])
+    state = add_large_history(create_test_state())
+    before = state.model_dump()
+    generate_final_rca(state)
+    repair = generator.return_value.responses.parse.call_args_list[1].kwargs["input"]
+    assert_prompt_evidence(repair, state, priorities=set(candidates[0].evidence_ids))
+    assert "unsupported_major_claim" in repair
+    assert "Causal link missing" in repair
+    assert candidates[0].root_cause in repair
+    assert state.model_dump(exclude={"final_result"}) == {
+        key: value for key, value in before.items() if key != "final_result"
+    }
+
+
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+def test_repair_prompt_does_not_append_full_original_history(generator, verifier):
+    setup_pipeline(generator, verifier, ["unsupported", "supported"])
+    state = add_large_history(create_test_state())
+    # Sentinel proves repair is built afresh rather than reusing initial text.
+    with patch(
+        "traceroot.agent.rca.build_context_from_state",
+        return_value="ORIGINAL-PROMPT-SENTINEL",
+    ):
+        generate_final_rca(state)
+    repair = generator.return_value.responses.parse.call_args_list[1].kwargs["input"]
+    assert "ORIGINAL-PROMPT-SENTINEL" not in repair
+    assert "Grounding context and query limitations:" not in repair
+    assert_prompt_evidence(
+        repair, state, priorities=set(create_generated_rca().evidence_ids)
+    )
+
+
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+def test_small_rca_context_preserves_all_observations(generator, verifier):
+    setup_pipeline(generator, verifier, ["supported"])
+    state = create_test_state()
+    generate_final_rca(state)
+    prompt = generator.return_value.responses.parse.call_args_list[0].kwargs["input"]
+    result = assert_prompt_evidence(prompt, state)
+    assert not result.partial
+    assert len(result.observations) == 1
+    assert "CHANGE-001-01" not in prompt  # Global ID without an observation.
+
+
+@pytest.mark.parametrize("budget", [0, 2, 40])
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+def test_rca_pipeline_discloses_budget_pressure_with_minimal_rendering(
+    generator, verifier, budget
+):
+    setup_pipeline(generator, verifier, ["unsupported", "unsupported"])
+    state = create_test_state()
+    before = state.model_dump()
+
+    def tiny_presentation(state, *, prioritized_evidence_ids=None):
+        return build_evidence_presentation(
+            state,
+            config=AgentContextConfig(max_evidence_chars=budget),
+            prioritized_evidence_ids=prioritized_evidence_ids,
+        )
+
+    with patch(
+        "traceroot.agent.prompt_context.build_evidence_presentation",
+        side_effect=tiny_presentation,
+    ):
+        generate_final_rca(state)
+    for client in (generator, verifier):
+        assert client.return_value.responses.parse.call_count == 2
+        for invocation in client.return_value.responses.parse.call_args_list:
+            prompt = invocation.kwargs["input"]
+            assert len(evidence_block(prompt)) <= budget
+            assert (
+                "Evidence view is partial because of context budget pressure." in prompt
+            )
+            assert "Omission does not imply absence." in prompt
+            assert "Database connection acquisition timeout" not in prompt
+    assert state.model_dump(exclude={"final_result"}) == {
+        key: value for key, value in before.items() if key != "final_result"
+    }
+
+
+@patch("traceroot.agent.rca.validate_claim_report", wraps=validate_claim_report)
+@patch("traceroot.agent.rca.verify_rca_claims", wraps=verify_rca_claims)
+@patch(
+    "traceroot.agent.prompt_context.build_evidence_presentation",
+    wraps=build_evidence_presentation,
+)
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+def test_first_candidate_validation_uses_same_verifier_presentation(
+    generator, verifier, builder, verify, validate
+):
+    setup_pipeline(generator, verifier, ["supported"])
+    state = create_test_state()
+    generate_final_rca(state)
+    presentation = verify.call_args.kwargs["presentation"]
+    assert validate.call_args.kwargs["presentation"] is presentation
+    assert (
+        evidence_block(verifier.return_value.responses.parse.call_args.kwargs["input"])
+        == presentation.rendered
+    )
+    assert (
+        builder.call_count == 2
+    )  # Initial generation and verifier; validation never selects.
+    assert builder.call_args.kwargs["prioritized_evidence_ids"] == set(
+        create_generated_rca().evidence_ids
+    )
+    assert verify.call_count == validate.call_count == 1
+
+
+@patch("traceroot.agent.rca.validate_claim_report", wraps=validate_claim_report)
+@patch("traceroot.agent.rca.verify_rca_claims", wraps=verify_rca_claims)
+@patch(
+    "traceroot.agent.prompt_context.build_evidence_presentation",
+    wraps=build_evidence_presentation,
+)
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+def test_repaired_candidate_validation_uses_same_verifier_presentation(
+    generator, verifier, builder, verify, validate
+):
+    candidates = setup_pipeline(generator, verifier, ["unsupported", "supported"])
+    candidates[1].evidence_ids = ["LOG-001-02"]
+    state = create_test_state()
+    generate_final_rca(state)
+    assert verify.call_count == validate.call_count == 2
+    presentations = [call.kwargs["presentation"] for call in verify.call_args_list]
+    assert presentations[0] is not presentations[1]
+    for index, presentation in enumerate(presentations):
+        assert validate.call_args_list[index].kwargs["presentation"] is presentation
+        prompt = verifier.return_value.responses.parse.call_args_list[index].kwargs[
+            "input"
+        ]
+        assert evidence_block(prompt) == presentation.rendered
+    assert builder.call_count == 4  # Initial, first verifier, repair, second verifier.
+    assert builder.call_args_list[1].kwargs["prioritized_evidence_ids"] == set(
+        candidates[0].evidence_ids
+    )
+    assert builder.call_args_list[3].kwargs["prioritized_evidence_ids"] == set(
+        candidates[1].evidence_ids
+    )
+    assert state.final_result.root_cause == candidates[1].root_cause
+
+
+@patch("traceroot.agent.grounding.get_llm_client")
+@patch("traceroot.agent.rca.get_llm_client")
+def test_unpresentable_cited_evidence_triggers_repair_or_fallback(generator, verifier):
+    setup_pipeline(generator, verifier, ["supported", "supported"])
+    state = create_test_state()
+    state.tool_history[0].observations[0] = "Oversized evidence " + "x" * 40_000
+    before = state.model_dump()
+    generate_final_rca(state)
+    assert generator.return_value.responses.parse.call_count == 2
+    assert verifier.return_value.responses.parse.call_count == 2
+    repair = generator.return_value.responses.parse.call_args_list[1].kwargs["input"]
+    assert "supporting_evidence_not_presented" in repair
+    assert "contradicted_major_claim" not in repair
+    for call in verifier.return_value.responses.parse.call_args_list:
+        block = evidence_block(call.kwargs["input"])
+        assert len(block) <= AgentContextConfig().max_evidence_chars
+        assert json.loads(block)["observations"] == []
+        assert "Oversized evidence" not in call.kwargs["input"]
+    assert_cautious(state.final_result)
+    assert state.model_dump(exclude={"final_result"}) == {
+        key: value for key, value in before.items() if key != "final_result"
+    }
