@@ -1010,7 +1010,8 @@ MCP must not delay the core experiment.
 | TR-045E | Live Provider Bootstrap Configuration | — | ✅ DONE |
 | TR-045F | CLI Live-Mode Wiring | — | ✅ DONE |
 | TR-046 | Simple Investigation UI | 2h | ✅ DONE |
-| TR-047 | RCA Claim Grounding & Negative-Evidence Validation | — | ⚪ NOT STARTED |
+| TR-047 | RCA Claim Grounding & Negative-Evidence Validation | — | ✅ DONE |
+| TR-048 | Live Telemetry Validation & Provenance Fidelity | — | ⚪ NOT STARTED |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
 
@@ -1056,8 +1057,9 @@ The runtime-generated incident should use the same `Incident` domain contract as
 Status:
 - TR-045A, TR-045B, TR-045C1 through TR-045C4, TR-045D, TR-045E, and TR-045F complete
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- Latest verified full project validation: **676 passed** at reviewed repository state `206912a`; lint and formatting passed; not rerun for this board update
-- Live backend routing, bootstrap configuration, and CLI live-mode wiring complete; real end-to-end live CLI smoke passed; basic Streamlit/UI live-mode wiring is NEXT and remains ⚪ NOT STARTED
+- Previously recorded full project validation: **676 passed** at reviewed repository state `206912a`; lint and formatting passed
+- Current full project validation after TR-047: **799 passed**; Ruff lint and formatting checks passed; not rerun for this board update
+- Live backend routing, bootstrap configuration, and CLI live-mode wiring complete; real end-to-end live CLI smoke passed; basic Streamlit/UI live-mode wiring complete and merged before TR-047
 
 Goal:
 
@@ -1088,11 +1090,11 @@ Same TraceRoot investigation workflow
 
 The investigation agent should not need to know whether evidence comes from frozen fixtures or live adapters.
 
-Next — basic Streamlit/UI live-mode wiring:
-- ⚪ NOT STARTED / NEXT under TR-045; ahead of TR-047
+Completed — basic Streamlit/UI live-mode wiring:
+- ✅ DONE under TR-045; merged before TR-047
 - Expose the working live investigation path through the existing Streamlit UI; keep the effort basic and functional
 
-Planned scope:
+Original scope:
 - Preserve existing fixture/demo UI behavior and add a simple live-mode option using existing Streamlit components, minimal forms/buttons, and minimal layout changes
 - Accept title, description, timezone-aware start time, and suspected services; reuse `create_incident(...)`
 - Reuse `load_live_evidence_config(...)` and `build_live_runtime(...)`; register the incident in the runtime registry shared by the live backend and router
@@ -1184,7 +1186,7 @@ Implementation completed:
 - Explicit activation uses the existing `configure_backend(...)` seam; fixture behavior remains the default without activation
 - GitHub token redacted from configuration output and shared by both GitHub providers
 - Environment variables documented in `.env.example`
-- Agent/MCP public contracts preserved; CLI live-mode wiring completed in TR-045F; Streamlit/UI live-mode wiring remains pending
+- Agent/MCP public contracts preserved; CLI live-mode wiring completed in TR-045F; Streamlit/UI live-mode wiring was pending at ticket completion and has since been merged
 
 Recorded implementation validation:
 - Configuration/bootstrap focused tests: **69 passed**
@@ -1241,7 +1243,7 @@ Implemented Streamlit UI capabilities:
 
 Completed:
 - Streamlit UI implemented in `app.py` with existing investigation and evaluation helpers
-- Presentation/demo layer only; no live telemetry integration
+- First-release presentation/demo layer; basic live-mode wiring subsequently completed under TR-045
 
 Possible later architecture:
 - FastAPI backend
@@ -1252,8 +1254,8 @@ The UI is a presentation and input layer only; core investigation logic remains 
 ### TR-047 — RCA Claim Grounding & Negative-Evidence Validation
 
 Status:
-- ⚪ NOT STARTED
-- Priority: next major quality ticket after basic Streamlit/UI live-mode wiring under TR-045
+- ✅ DONE
+- Implementation merged to `main` after basic Streamlit/UI live-mode wiring under TR-045
 
 Reason:
 - Real live CLI smoke gathered metrics, Loki logs, and GitHub code changes, but the deployment query returned no evidence
@@ -1281,9 +1283,43 @@ Testing/evaluation ideas:
 - Improved duplicate-selection behavior after an unresolved source has already been queried
 - Existing frozen comparison/evaluation remains isolated; any post-improvement evaluation requires a dedicated run
 
+Completed:
+- Grounding/query context derived from tool history distinguishes unqueried, queried-empty, and queried-nonempty evidence sources
+- Observation-aware supporting/contradicting evidence validation rejects unknown IDs and unavailable or ambiguous observation mappings
+- Structured LLM claim verification uses `SUPPORTED`, `PARTIALLY_SUPPORTED`, `UNSUPPORTED`, and `CONTRADICTED` assessments
+- Deterministic policy validation requires exact root-cause assessment, protects rejected hypotheses, and enforces confidence/wording guardrails
+- Partial support requires `Strongest current hypothesis:` wording with confidence at most `0.60` or unspecified
+- One bounded RCA repair attempt includes explicit grounding feedback; repaired RCA is independently re-verified
+- Deterministic cautious fallback when grounding still fails or expected verifier/repair failures occur
+- Public `RCAResult`, `InvestigationState`, and experiment-record shapes unchanged; CLI/UI compatibility preserved
+- Frozen evaluation artifacts and experiment results unchanged
+
+Original live-smoke weakness addressed:
+- A log saying "after deployment" does not independently prove deployment; a recent Git commit does not prove runtime deployment
+- An empty deployment query means no matching evidence was returned, not proof that no deployment occurred
+- Unsupported deployment causation is rejected, repaired, or replaced by cautious fallback rather than accepted solely on citation membership
+
+Recorded final validation:
+- Full test suite: **799 passed**
+- Targeted grounding/RCA smoke: **76 passed, 21 deselected**
+- Ruff lint and formatting checks passed
+- Real LLM grounding smoke completed successfully
+- Results recorded from final validation; not rerun for this board-only update
+
+Completion boundary:
+- Investigation-loop selection/stop-policy changes were not part of the merged RCA grounding implementation; the exploration and duplicate-selection ideas above remain follow-up work
+
 Out of scope:
 - New evidence providers, CLI/UI changes, MCP transport changes, and live provider API changes
 - Frozen dataset/ground-truth modification and broad model/provider swaps
+
+### TR-048 — Live Telemetry Validation & Provenance Fidelity
+
+Status:
+- ⚪ NOT STARTED / NEXT after TR-047
+
+Planned scope:
+- Telemetry response validation/fidelity and Prometheus label preservation, as recorded in the Codex-review follow-ups
 
 ---
 
@@ -1350,6 +1386,7 @@ No first-release tickets in progress.
 - TR-045E — Live Provider Bootstrap Configuration
 - TR-045F — CLI Live-Mode Wiring
 - TR-046 — Simple Investigation UI
+- TR-047 — RCA Claim Grounding & Negative-Evidence Validation
 
 ## 🟣 Stretch
 
@@ -1357,8 +1394,8 @@ No outstanding stretch tickets.
 
 ## 🔵 Extended Scope
 
-- TR-045 — Live Evidence Integrations (backend foundation, providers, routing, bootstrap, and CLI live mode complete; basic Streamlit/UI live-mode wiring NEXT / ⚪ NOT STARTED)
-- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (⚪ NOT STARTED; next after basic UI live-mode wiring)
+- TR-045 — Live Evidence Integrations (backend foundation, providers, routing, bootstrap, CLI live mode, and basic Streamlit/UI live-mode wiring complete; further production integrations remain extended scope)
+- TR-048 — Live Telemetry Validation & Provenance Fidelity (⚪ NOT STARTED / NEXT after TR-047)
 
 ---
 
@@ -1374,7 +1411,7 @@ No outstanding stretch tickets.
 8. Evaluate agent behavior as well as final answers.
 9. Add complexity only when evaluation supports it.
 10. MCP is optional and must not delay the core evaluation.
-11. File-backed incident evidence is the reproducible evaluation surface; live incident intake and production evidence integrations remain extended scope. The completed Streamlit UI is a presentation/demo layer with no live telemetry integration.
+11. File-backed incident evidence is the reproducible evaluation surface; live incident intake and production evidence integrations remain extended scope. The completed Streamlit UI is a presentation/demo layer over the existing investigation workflow, including basic live mode.
 12. Final documentation must explicitly cover Problem Definition, Data Processing, System Design, and Evals.
 13. Cost and latency must be measured and reported, not merely discussed.
 14. Chunking strategy and operational tool choices must be documented in the system design document.
@@ -1399,9 +1436,11 @@ Current state:
 - TR-045D Live Backend Routing complete; registry membership selects the live or fixture backend
 - TR-045E Live Provider Bootstrap Configuration complete; bootstrap smoke passed
 - TR-045F CLI Live-Mode Wiring complete; fixture CLI smoke and real end-to-end live CLI smoke passed
+- Basic Streamlit/UI live-mode wiring complete and merged
+- TR-047 RCA Claim Grounding & Negative-Evidence Validation complete and merged to `main`
 - Real live CLI path verified from runtime incident creation through evidence gathering, RCA generation, and trace persistence
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
-- **676 passed** at reviewed repository state `206912a`; lint and formatting passed (not rerun for this board update)
+- **799 passed** at TR-047 final validation; targeted grounding/RCA smoke: **76 passed, 21 deselected**; Ruff lint and formatting checks passed; real LLM grounding smoke completed successfully (not rerun for this board update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1440,9 +1479,8 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-045 — Live Evidence Integrations: basic Streamlit/UI live-mode wiring NEXT / ⚪ NOT STARTED; reuse the existing UI and live pipeline with investigation-scoped execution; basic/functional only, no redesign
-2. TR-047 — RCA Claim Grounding & Negative-Evidence Validation: next major quality ticket after UI wiring; ⚪ NOT STARTED; planned claim grounding, negative-evidence-aware synthesis, claim verification, and confidence calibration
-3. Any post-improvement evaluation remains pending and must be a dedicated run preserving the existing frozen comparison artifacts
+1. TR-048 — Live Telemetry Validation & Provenance Fidelity: NEXT / ⚪ NOT STARTED; telemetry response validation/fidelity and Prometheus label preservation from the existing review follow-ups
+2. Any post-improvement evaluation remains pending and must be a dedicated run preserving the existing frozen comparison artifacts
 
 Known limitations retained after evaluation:
 - Hypothesis verification does not enforce evidence citations and matches by description rather than a stable hypothesis ID
@@ -1466,5 +1504,6 @@ Codex-review follow-ups — future work:
 
 Extended scope after the core capstone:
 - TR-044 — Live Incident Intake (complete)
-- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E/F complete; basic Streamlit/UI live-mode wiring NEXT / ⚪ NOT STARTED)
-- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (⚪ NOT STARTED; next after basic UI live-mode wiring)
+- TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E/F and basic Streamlit/UI live-mode wiring complete; further production integrations remain extended scope)
+- TR-047 — RCA Claim Grounding & Negative-Evidence Validation (✅ DONE; merged to `main`)
+- TR-048 — Live Telemetry Validation & Provenance Fidelity (⚪ NOT STARTED / NEXT)
