@@ -3,6 +3,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests.agent.prompt_helpers import (
+    add_large_history,
+    assert_prompt_evidence,
+    query_metadata,
+)
 from traceroot.agent.state import (
     Hypothesis,
     HypothesisStatus,
@@ -361,3 +366,49 @@ def test_verify_hypotheses_records_call_when_token_usage_unavailable(
     assert usage.output_tokens is None
     assert usage.total_tokens is None
     assert usage.llm_calls == 1
+
+
+@patch("traceroot.agent.verification.get_llm_client")
+def test_hypothesis_verification_uses_bounded_context(client):
+    state = add_large_history(create_test_state())
+    before = state.model_dump()
+    client.return_value.responses.parse.return_value = create_mock_response([])
+    verify_hypotheses(state)
+    result = assert_prompt_evidence(
+        client.return_value.responses.parse.call_args.kwargs["input"], state
+    )
+    assert result.budget_limited
+    assert state.model_dump() == before
+
+
+@patch("traceroot.agent.verification.get_llm_client")
+def test_hypothesis_verification_discloses_omitted_evidence(client):
+    state = add_large_history(create_test_state())
+    state.tool_history.append(
+        ToolCallRecord(tool_name="deployments", service="checkout-service")
+    )
+    client.return_value.responses.parse.return_value = create_mock_response([])
+    verify_hypotheses(state)
+    prompt = client.return_value.responses.parse.call_args.kwargs["input"]
+    assert_prompt_evidence(prompt, state)
+    assert "Do not reject a hypothesis" in prompt
+    summaries = query_metadata(prompt)["tool_summaries"]
+    assert summaries["deployments"]["queried"]
+    assert summaries["deployments"]["calls"][0]["returned_count"] == 0
+    assert not summaries["code_changes"]["queried"]
+
+
+@patch("traceroot.agent.verification.get_llm_client")
+def test_small_hypothesis_context_preserves_all_observations(client):
+    state = create_test_state()
+    before = state.model_dump()
+    client.return_value.responses.parse.return_value = create_mock_response([])
+    verify_hypotheses(state)
+    result = assert_prompt_evidence(
+        client.return_value.responses.parse.call_args.kwargs["input"], state
+    )
+    assert len(result.observations) == sum(
+        len(r.observations) for r in state.tool_history
+    )
+    assert not result.partial
+    assert state.model_dump() == before

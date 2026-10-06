@@ -4,6 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests.agent.prompt_helpers import (
+    add_large_history,
+    assert_prompt_evidence,
+    query_metadata,
+)
+from traceroot.agent.context import AgentContextConfig, build_evidence_presentation
 from traceroot.agent.grounding import (
     ClaimAssessment,
     ClaimSupportStatus,
@@ -626,7 +632,7 @@ def test_verify_rca_claims_assesses_complete_root_cause_text(mock_get_llm_client
     context = build_grounding_context(_verifier_state())
     before = [item.model_dump() for item in (candidate, context)]
 
-    report = verify_rca_claims(candidate, context)
+    report = verify_rca_claims(candidate, context, state=_verifier_state())
 
     prompt = _verifier_prompt(mock_get_llm_client)
     assert _prompt_section(prompt, "CANDIDATE RCA") == candidate.model_dump()
@@ -647,7 +653,9 @@ def test_verify_rca_claims_includes_empty_query_context(mock_get_llm_client):
     candidate = _candidate()
     _mock_verifier_response(mock_get_llm_client, candidate)
 
-    verify_rca_claims(candidate, build_grounding_context(_verifier_state()))
+    verify_rca_claims(
+        candidate, build_grounding_context(_verifier_state()), state=_verifier_state()
+    )
 
     prompt = _verifier_prompt(mock_get_llm_client)
     summary = _prompt_section(prompt, "QUERY RESULTS / LIMITATIONS")["tool_summaries"]
@@ -659,7 +667,7 @@ def test_verify_rca_claims_includes_empty_query_context(mock_get_llm_client):
                 "history_index": 0,
                 "service": "checkout-service",
                 "returned_count": 0,
-                "evidence_ids": [],
+                "returned_observations": 0,
             }
         ],
     }
@@ -672,7 +680,9 @@ def test_verify_rca_claims_distinguishes_unqueried_from_empty_tool(mock_get_llm_
     candidate = _candidate()
     _mock_verifier_response(mock_get_llm_client, candidate)
 
-    verify_rca_claims(candidate, build_grounding_context(_verifier_state()))
+    verify_rca_claims(
+        candidate, build_grounding_context(_verifier_state()), state=_verifier_state()
+    )
 
     summary = _prompt_section(
         _verifier_prompt(mock_get_llm_client), "QUERY RESULTS / LIMITATIONS"
@@ -691,7 +701,9 @@ def test_verify_rca_claims_includes_observed_evidence_text(mock_get_llm_client):
     candidate = _candidate()
     _mock_verifier_response(mock_get_llm_client, candidate)
 
-    verify_rca_claims(candidate, build_grounding_context(_verifier_state()))
+    verify_rca_claims(
+        candidate, build_grounding_context(_verifier_state()), state=_verifier_state()
+    )
 
     prompt = _verifier_prompt(mock_get_llm_client)
     observations = _prompt_section(prompt, "OBSERVED EVIDENCE")["observations"]
@@ -702,11 +714,14 @@ def test_verify_rca_claims_includes_observed_evidence_text(mock_get_llm_client):
             "tool_name": "logs",
             "service": "checkout-service",
             "history_index": 1,
+            "observation_index": index,
         }
-        for evidence_id, observation in [
-            ("LOG-1", "Request processing failure after deployment"),
-            ("LOG-2", "Connection acquisition timeout"),
-        ]
+        for index, (evidence_id, observation) in enumerate(
+            [
+                ("LOG-1", "Request processing failure after deployment"),
+                ("LOG-2", "Connection acquisition timeout"),
+            ]
+        )
     ]
     assert "A deployment must be responsible." not in prompt
 
@@ -719,7 +734,7 @@ def test_verify_rca_claims_includes_hypothesis_statuses(mock_get_llm_client):
     context = build_grounding_context(state)
     state.hypotheses[0].status = HypothesisStatus.OPEN
 
-    verify_rca_claims(candidate, context)
+    verify_rca_claims(candidate, context, state=_verifier_state())
 
     hypotheses = _prompt_section(
         _verifier_prompt(mock_get_llm_client), "INVESTIGATION HYPOTHESES"
@@ -739,7 +754,7 @@ def test_verify_rca_claims_marks_rejected_hypothesis_match(mock_get_llm_client):
     )
     context = build_grounding_context(_verifier_state())
 
-    report = verify_rca_claims(candidate, context)
+    report = verify_rca_claims(candidate, context, state=_verifier_state())
 
     assert "Set matches_rejected_hypothesis=true" in _verifier_prompt(
         mock_get_llm_client
@@ -756,7 +771,9 @@ def test_verify_rca_claims_treats_log_text_as_untrusted_evidence(mock_get_llm_cl
     candidate = _candidate()
     _mock_verifier_response(mock_get_llm_client, candidate)
 
-    verify_rca_claims(candidate, build_grounding_context(_verifier_state()))
+    verify_rca_claims(
+        candidate, build_grounding_context(_verifier_state()), state=_verifier_state()
+    )
 
     prompt = _verifier_prompt(mock_get_llm_client)
     assert "the statement is not automatically true" in prompt
@@ -777,7 +794,7 @@ def test_verify_rca_claims_records_llm_usage(mock_get_llm_client):
     response.usage = MagicMock(input_tokens=160, output_tokens=35)
     usage = LLMUsage(input_tokens=10, output_tokens=5, llm_calls=1)
 
-    verify_rca_claims(candidate, _context(), llm_usage=usage)
+    verify_rca_claims(candidate, _context(), llm_usage=usage, state=_verifier_state())
 
     assert usage.input_tokens == 170
     assert usage.output_tokens == 40
@@ -793,7 +810,7 @@ def test_verify_rca_claims_records_call_when_token_usage_unavailable(
     _mock_verifier_response(mock_get_llm_client, candidate)
     usage = LLMUsage()
 
-    verify_rca_claims(candidate, _context(), llm_usage=usage)
+    verify_rca_claims(candidate, _context(), llm_usage=usage, state=_verifier_state())
 
     assert usage.input_tokens is None
     assert usage.output_tokens is None
@@ -810,7 +827,9 @@ def test_verify_rca_claims_rejects_missing_parsed_output(mock_get_llm_client):
     usage = LLMUsage()
 
     with pytest.raises(RuntimeError, match="LLM did not return RCA claim assessments"):
-        verify_rca_claims(candidate, _context(), llm_usage=usage)
+        verify_rca_claims(
+            candidate, _context(), llm_usage=usage, state=_verifier_state()
+        )
 
     assert usage.llm_calls == 1
     assert usage.total_tokens == 60
@@ -827,7 +846,7 @@ def test_verify_rca_claims_excludes_ambiguous_observation_mappings(
     state.tool_history[1].observations = observations
     context = build_grounding_context(state)
 
-    verify_rca_claims(candidate, context)
+    verify_rca_claims(candidate, context, state=state)
 
     assert context.ambiguous_history_indices == [1]
     assert context.observations == []
@@ -836,7 +855,7 @@ def test_verify_rca_claims_excludes_ambiguous_observation_mappings(
         "LOG-2",
     ]
     prompt = _verifier_prompt(mock_get_llm_client)
-    assert _prompt_section(prompt, "OBSERVED EVIDENCE") == {"observations": []}
+    assert _prompt_section(prompt, "OBSERVED EVIDENCE")["observations"] == []
     assert _prompt_section(prompt, "QUERY RESULTS / LIMITATIONS")[
         "ambiguous_history_indices"
     ] == [1]
@@ -852,8 +871,285 @@ def test_verify_rca_claims_uses_only_candidate_and_context(
     candidate = _candidate()
     _mock_verifier_response(mock_get_llm_client, candidate)
 
-    verify_rca_claims(candidate, build_grounding_context(_verifier_state()))
+    verify_rca_claims(
+        candidate, build_grounding_context(_verifier_state()), state=_verifier_state()
+    )
 
     mock_read_text.assert_not_called()
     mock_open.assert_not_called()
     assert "ground_truth" not in _verifier_prompt(mock_get_llm_client)
+
+
+@patch("traceroot.agent.grounding.get_llm_client")
+def test_claim_verifier_prompt_is_bounded(client):
+    state = add_large_history(_verifier_state())
+    candidate = _candidate()
+    _mock_verifier_response(client, candidate)
+    context = build_grounding_context(state)
+    before = [item.model_dump() for item in (state, context, candidate)]
+    verify_rca_claims(candidate, context, state=state)
+    result = assert_prompt_evidence(
+        _verifier_prompt(client), state, priorities=set(candidate.evidence_ids)
+    )
+    assert result.budget_limited
+    assert len(context.observations) == 242
+    assert before == [item.model_dump() for item in (state, context, candidate)]
+
+
+@patch("traceroot.agent.grounding.get_llm_client")
+def test_candidate_citations_are_prioritized_in_verifier_context(client):
+    state = add_large_history(_verifier_state())
+    ordinary = build_evidence_presentation(state)
+    visible = {item.evidence_id for item in ordinary.observations}
+    cited = next(eid for eid in state.evidence_ids if eid not in visible)
+    candidate = _candidate(evidence_ids=[cited])
+    _mock_verifier_response(client, candidate)
+    verify_rca_claims(candidate, build_grounding_context(state), state=state)
+    result = assert_prompt_evidence(_verifier_prompt(client), state, priorities={cited})
+    assert cited in {item.evidence_id for item in result.observations}
+
+
+@patch("traceroot.agent.grounding.get_llm_client")
+def test_claim_verifier_discloses_partial_evidence_context(client):
+    state = add_large_history(_verifier_state())
+    candidate = _candidate()
+    _mock_verifier_response(client, candidate)
+    verify_rca_claims(candidate, build_grounding_context(state), state=state)
+    prompt = _verifier_prompt(client)
+    assert_prompt_evidence(prompt, state, priorities=set(candidate.evidence_ids))
+    assert "Omitted evidence may contain support or contradiction." in prompt
+    assert "Do not convert missing evidence into CONTRADICTED" in prompt
+    summaries = query_metadata(prompt)["tool_summaries"]
+    assert summaries["deployments"]["calls"][0]["returned_count"] == 0
+    assert not summaries["metrics"]["queried"]
+
+
+def test_grounding_rejects_support_not_shown_to_verifier():
+    state = _verifier_state()
+    context = build_grounding_context(state)
+    candidate = _candidate()
+    report = ClaimVerificationReport(claims=[_assessment(candidate)])
+    presentation = build_evidence_presentation(
+        state, config=AgentContextConfig(max_observations=0)
+    )
+    before = [
+        item.model_dump() for item in (state, context, candidate, report, presentation)
+    ]
+    assert validate_claim_report(candidate, context, report).accepted
+    decision = validate_claim_report(
+        candidate, context, report, presentation=presentation
+    )
+    assert not decision.accepted
+    assert decision.requires_repair
+    assert decision.feedback == ["supporting_evidence_not_presented"]
+    assert before == [
+        item.model_dump() for item in (state, context, candidate, report, presentation)
+    ]
+
+
+def test_grounding_rejects_contradiction_not_shown_to_verifier():
+    state = _verifier_state()
+    candidate = _candidate()
+    context = build_grounding_context(state)
+    report = ClaimVerificationReport(
+        claims=[_assessment(candidate, contradicting_evidence_ids=["LOG-2"])]
+    )
+    presentation = build_evidence_presentation(
+        state,
+        config=AgentContextConfig(max_observations=1),
+        prioritized_evidence_ids={"LOG-1"},
+    )
+    assert validate_claim_report(candidate, context, report).accepted
+    decision = validate_claim_report(
+        candidate, context, report, presentation=presentation
+    )
+    assert not decision.accepted
+    assert decision.requires_repair
+    assert decision.feedback == ["contradicting_evidence_not_presented"]
+
+
+def test_grounding_accepts_support_shown_to_verifier():
+    state = _verifier_state()
+    candidate = _candidate()
+    presentation = build_evidence_presentation(
+        state,
+        config=AgentContextConfig(max_observations=1),
+        prioritized_evidence_ids={"LOG-1"},
+    )
+    report = ClaimVerificationReport(claims=[_assessment(candidate)])
+    decision = validate_claim_report(
+        candidate, build_grounding_context(state), report, presentation=presentation
+    )
+    assert (
+        presentation.partial
+    )  # Unrelated omissions do not disqualify visible support.
+    assert decision.accepted
+    assert not decision.requires_repair
+    assert decision.feedback == []
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("history_index", 99),
+        ("observation_index", 1),
+        ("evidence_id", "LOG-2"),
+        ("observation", "A different observation"),
+        ("tool_name", "metrics"),
+        ("service", "other-service"),
+    ],
+)
+def test_grounding_visibility_uses_exact_presented_association(field, value):
+    state = _verifier_state()
+    candidate = _candidate()
+    report = ClaimVerificationReport(claims=[_assessment(candidate)])
+    presentation = build_evidence_presentation(
+        state, config=AgentContextConfig(max_observations=1)
+    )
+    presentation.observations[0] = presentation.observations[0].model_copy(
+        update={field: value}
+    )
+    # Keep the synthetic presentation's rendered view consistent with its data.
+    payload = json.loads(presentation.rendered)
+    payload["observations"] = [item.model_dump() for item in presentation.observations]
+    presentation.rendered = json.dumps(payload)
+    decision = validate_claim_report(
+        candidate, build_grounding_context(state), report, presentation=presentation
+    )
+    assert not decision.accepted
+    assert decision.feedback == ["supporting_evidence_not_presented"]
+
+
+def test_omitted_evidence_is_not_treated_as_contradicted():
+    state = _verifier_state()
+    candidate = _candidate()
+    report = ClaimVerificationReport(claims=[_assessment(candidate)])
+    presentation = build_evidence_presentation(
+        state, config=AgentContextConfig(max_observations=0)
+    )
+    decision = validate_claim_report(
+        candidate, build_grounding_context(state), report, presentation=presentation
+    )
+    assert decision.feedback == ["supporting_evidence_not_presented"]
+    assert report.claims[0].status == ClaimSupportStatus.SUPPORTED
+    assert "unsupported_major_claim" not in decision.feedback
+    assert "contradicted_major_claim" not in decision.feedback
+
+
+@pytest.mark.parametrize("status", list(ClaimSupportStatus))
+def test_small_full_presentation_preserves_existing_grounding_behavior(status):
+    state = _verifier_state()
+    context = build_grounding_context(state)
+    candidate = _candidate()
+    report = ClaimVerificationReport(
+        claims=[
+            _assessment(candidate, status=status, contradicting_evidence_ids=["LOG-2"])
+        ]
+    )
+    presentation = build_evidence_presentation(state)
+    assert not presentation.partial
+    assert validate_claim_report(
+        candidate, context, report, presentation=presentation
+    ) == validate_claim_report(candidate, context, report)
+
+
+@pytest.mark.parametrize("same_call", [False, True])
+@pytest.mark.parametrize(
+    "citation_field", ["supporting_evidence_ids", "contradicting_evidence_ids"]
+)
+def test_repeated_id_requires_every_usable_occurrence_to_be_visible(
+    same_call, citation_field
+):
+    state = _verifier_state()
+    if same_call:
+        state.tool_history[1].evidence_ids.append("LOG-1")
+        state.tool_history[1].observations.append("Conflicting statement about cause")
+    else:
+        state.tool_history.append(
+            ToolCallRecord(
+                tool_name="metrics",
+                service="other-service",
+                evidence_ids=["LOG-1"],
+                observations=["Conflicting statement about cause"],
+            )
+        )
+    candidate = _candidate()
+    overrides = {citation_field: ["LOG-1"]}
+    if citation_field == "contradicting_evidence_ids":
+        overrides["supporting_evidence_ids"] = ["LOG-2"]
+    report = ClaimVerificationReport(claims=[_assessment(candidate, **overrides)])
+    full = build_evidence_presentation(state)
+    limited = build_evidence_presentation(
+        state,
+        config=AgentContextConfig(max_observations=2),
+        prioritized_evidence_ids={"LOG-1", "LOG-2"},
+    )
+    assert [
+        (item.history_index, item.observation_index) for item in limited.observations
+    ] == [(1, 0), (1, 1)]
+    context = build_grounding_context(state)
+    assert validate_claim_report(candidate, context, report, presentation=full).accepted
+    decision = validate_claim_report(candidate, context, report, presentation=limited)
+    expected = (
+        "supporting_evidence_not_presented"
+        if citation_field == "supporting_evidence_ids"
+        else "contradicting_evidence_not_presented"
+    )
+    assert expected in decision.feedback
+    assert not decision.accepted
+
+
+def test_collapsed_duplicate_occurrence_is_conservatively_ineligible():
+    state = _verifier_state()
+    state.tool_history.append(state.tool_history[1].model_copy(deep=True))
+    candidate = _candidate()
+    report = ClaimVerificationReport(claims=[_assessment(candidate)])
+    presentation = build_evidence_presentation(state)
+    assert len(presentation.observations) == 2  # Four returned, two deduplicated.
+    decision = validate_claim_report(
+        candidate, build_grounding_context(state), report, presentation=presentation
+    )
+    assert decision.feedback == ["supporting_evidence_not_presented"]
+
+
+def test_blank_observation_still_counts_toward_exact_position():
+    state = _verifier_state()
+    state.tool_history[1].observations[0] = "   "
+    candidate = _candidate(evidence_ids=["LOG-2"])
+    report = ClaimVerificationReport(
+        claims=[_assessment(candidate, supporting_evidence_ids=["LOG-2"])]
+    )
+    decision = validate_claim_report(
+        candidate,
+        build_grounding_context(state),
+        report,
+        presentation=build_evidence_presentation(state),
+    )
+    assert decision.accepted
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["missing", "ambiguous", "blank", "wrong_history", "wrong_tool", "wrong_service"],
+)
+def test_visibility_does_not_override_full_state_availability(case):
+    candidate = _candidate()
+    context = _unavailable_observation_context(case)
+    state = InvestigationState(
+        incident=_incident(),
+        tool_history=[
+            ToolCallRecord(tool_name="deployments"),
+            ToolCallRecord(
+                tool_name="logs",
+                evidence_ids=["LOG-1"],
+                observations=["Connection acquisition timeout"],
+            ),
+        ],
+    )
+    report = ClaimVerificationReport(claims=[_assessment(candidate)])
+    decision = validate_claim_report(
+        candidate, context, report, presentation=build_evidence_presentation(state)
+    )
+    assert not decision.accepted
+    assert "supporting_evidence_observation_unavailable" in decision.feedback
+    assert "supporting_evidence_not_presented" in decision.feedback

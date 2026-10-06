@@ -1011,7 +1011,8 @@ MCP must not delay the core experiment.
 | TR-045F | CLI Live-Mode Wiring | — | ✅ DONE |
 | TR-046 | Simple Investigation UI | 2h | ✅ DONE |
 | TR-047 | RCA Claim Grounding & Negative-Evidence Validation | — | ✅ DONE |
-| TR-048 | Live Telemetry Validation & Provenance Fidelity | — | ⚪ NOT STARTED |
+| TR-048 | Live Telemetry Validation & Provenance Fidelity | — | ✅ DONE |
+| TR-049 | Bounded Evidence Context | — | ⚪ NOT STARTED |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
 
@@ -1058,7 +1059,7 @@ Status:
 - TR-045A, TR-045B, TR-045C1 through TR-045C4, TR-045D, TR-045E, and TR-045F complete
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
 - Previously recorded full project validation: **676 passed** at reviewed repository state `206912a`; lint and formatting passed
-- Current full project validation after TR-047: **799 passed**; Ruff lint and formatting checks passed; not rerun for this board update
+- Current full project validation after TR-048: **964 passed**; Ruff lint and formatting checks passed; not rerun for this board update
 - Live backend routing, bootstrap configuration, and CLI live-mode wiring complete; real end-to-end live CLI smoke passed; basic Streamlit/UI live-mode wiring complete and merged before TR-047
 
 Goal:
@@ -1316,10 +1317,44 @@ Out of scope:
 ### TR-048 — Live Telemetry Validation & Provenance Fidelity
 
 Status:
-- ⚪ NOT STARTED / NEXT after TR-047
+- ✅ DONE
+- Implementation merged to `main`
+
+Original scope:
+- Telemetry response validation/fidelity and Prometheus label preservation, as recorded in the Codex-review follow-ups
+
+Completed:
+- Strict Loki and Prometheus success-response validation; malformed HTTP 200 telemetry no longer silently becomes `[]`
+- Unsupported result types rejected; a malformed stream, series, or sample fails the query
+- Non-finite Prometheus samples rejected
+- Loki service selector escaping fixed using JSON string escaping
+- Complete telemetry label maps preserved in `LogEntry.labels` and `MetricEntry.labels` and retained in evidence/observation strings
+- Loki evidence IDs use canonical stream labels, exact raw source timestamp, and message; distinct streams with identical timestamp/message no longer collide
+- Prometheus ID algorithm and fixture IDs unchanged
+- Provider public signatures, `EvidenceBackend` contract, and router/backend behavior unchanged
+- Historical evidence JSON without labels remains compatible
+
+Recorded final validation:
+- Full test suite: **964 passed**
+- Targeted TR-048 smoke: **50 passed, 145 deselected**
+- Loki + Prometheus provider suite: **185 passed**
+- Ruff lint and formatting checks passed
+- Real Prometheus live CLI path verified
+- Real Loki provenance/ID smoke verified
+- Results recorded from final validation; not rerun for this board-only update
+
+Real Loki smoke:
+- Same message and same source-time context across streams
+- `instance-a` and `instance-b` labels preserved
+- Distinct `LOG-LIVE-*` evidence IDs generated
+
+### TR-049 — Bounded Evidence Context
+
+Status:
+- ⚪ NOT STARTED / NEXT after TR-048
 
 Planned scope:
-- Telemetry response validation/fidelity and Prometheus label preservation, as recorded in the Codex-review follow-ups
+- Bounded evidence context, as recorded in the Codex-review follow-ups
 
 ---
 
@@ -1387,6 +1422,7 @@ No first-release tickets in progress.
 - TR-045F — CLI Live-Mode Wiring
 - TR-046 — Simple Investigation UI
 - TR-047 — RCA Claim Grounding & Negative-Evidence Validation
+- TR-048 — Live Telemetry Validation & Provenance Fidelity
 
 ## 🟣 Stretch
 
@@ -1395,7 +1431,7 @@ No outstanding stretch tickets.
 ## 🔵 Extended Scope
 
 - TR-045 — Live Evidence Integrations (backend foundation, providers, routing, bootstrap, CLI live mode, and basic Streamlit/UI live-mode wiring complete; further production integrations remain extended scope)
-- TR-048 — Live Telemetry Validation & Provenance Fidelity (⚪ NOT STARTED / NEXT after TR-047)
+- TR-049 — Bounded Evidence Context (⚪ NOT STARTED / NEXT after TR-048)
 
 ---
 
@@ -1424,7 +1460,9 @@ No outstanding stretch tickets.
 
 # Current Focus
 
-**First release / capstone version complete and ready for submission/release.**
+**Current release: v1.1.0 — Live Evidence & Grounded RCA, tagged and released.**
+
+The `v1.0-capstone` research milestone and frozen comparison results remain intact. TR-049 is planned follow-up work, not part of v1.1.0.
 
 Current state:
 - TR-001 through TR-041 complete, including TR-026A
@@ -1438,9 +1476,11 @@ Current state:
 - TR-045F CLI Live-Mode Wiring complete; fixture CLI smoke and real end-to-end live CLI smoke passed
 - Basic Streamlit/UI live-mode wiring complete and merged
 - TR-047 RCA Claim Grounding & Negative-Evidence Validation complete and merged to `main`
+- TR-048 Live Telemetry Validation & Provenance Fidelity complete and merged to `main`
 - Real live CLI path verified from runtime incident creation through evidence gathering, RCA generation, and trace persistence
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
 - **799 passed** at TR-047 final validation; targeted grounding/RCA smoke: **76 passed, 21 deselected**; Ruff lint and formatting checks passed; real LLM grounding smoke completed successfully (not rerun for this board update)
+- Current full-suite baseline after TR-048: **964 passed**; targeted TR-048 smoke: **50 passed, 145 deselected**; Loki + Prometheus provider suite: **185 passed**; Ruff lint and formatting checks passed; real Prometheus live CLI path and real Loki provenance/ID smoke verified (not rerun for this board update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1479,7 +1519,7 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-048 — Live Telemetry Validation & Provenance Fidelity: NEXT / ⚪ NOT STARTED; telemetry response validation/fidelity and Prometheus label preservation from the existing review follow-ups
+1. TR-049 — Bounded Evidence Context: NEXT / ⚪ NOT STARTED; bounded evidence context from the existing review follow-ups
 2. Any post-improvement evaluation remains pending and must be a dedicated run preserving the existing frozen comparison artifacts
 
 Known limitations retained after evaluation:
@@ -1492,9 +1532,9 @@ Known limitations retained after evaluation:
 - Recorded runtime token/cost reporting covers instrumented generation/investigation calls, not all-in embedding and evaluator costs
 
 Codex-review follow-ups — future work:
-- Telemetry response validation/fidelity and Prometheus label preservation
-- Loki selector escaping and evidence identity improvements
-- Bounded evidence context
+- Telemetry response validation/fidelity and Prometheus label preservation (✅ DONE in TR-048)
+- Loki selector escaping and evidence identity improvements (✅ DONE in TR-048)
+- Bounded evidence context (TR-049 — NEXT / ⚪ NOT STARTED)
 - Failed investigation persistence
 - Deployment pagination limits
 - Evaluation stop-reason mismatch
@@ -1506,4 +1546,5 @@ Extended scope after the core capstone:
 - TR-044 — Live Incident Intake (complete)
 - TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E/F and basic Streamlit/UI live-mode wiring complete; further production integrations remain extended scope)
 - TR-047 — RCA Claim Grounding & Negative-Evidence Validation (✅ DONE; merged to `main`)
-- TR-048 — Live Telemetry Validation & Provenance Fidelity (⚪ NOT STARTED / NEXT)
+- TR-048 — Live Telemetry Validation & Provenance Fidelity (✅ DONE; merged to `main`)
+- TR-049 — Bounded Evidence Context (⚪ NOT STARTED / NEXT)

@@ -3,6 +3,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests.agent.prompt_helpers import (
+    add_large_history,
+    assert_prompt_evidence,
+    query_metadata,
+)
 from traceroot.agent.investigation import ToolSelection, build_prompt, investigate
 from traceroot.agent.state import (
     Hypothesis,
@@ -602,9 +607,9 @@ def test_investigate_prompts_to_broaden_after_empty_targeted_result(
         in second_prompt
     )
     assert "An empty result does not confirm or rule out a cause" in second_prompt
-    assert "service='checkout-service'" in second_prompt
-    assert "evidence_ids=[]" in second_prompt
-    assert "observations=[]" in second_prompt
+    assert '"service":"checkout-service"' in second_prompt
+    assert '"returned_count":0' in second_prompt
+    assert '"returned_observations":0' in second_prompt
     mock_execute_tool.assert_called_with(
         tool_name=ToolName.LOGS,
         incident_id="INC-TEST",
@@ -866,3 +871,88 @@ def test_investigate_defaults_to_direct_tool_execution(
         incident_id="INC-TEST",
         service="checkout-service",
     )
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_tool_selection_prompt_is_bounded_after_large_tool_result(client, executor):
+    state = create_test_state()
+    entries = [
+        LogEntry(
+            id=f"LARGE-{index:04d}",
+            timestamp="2026-09-25T00:00:00Z",
+            service="checkout-service",
+            level="ERROR",
+            message=f"Unique log {index:04d} " + "x" * 1500,
+        )
+        for index in range(240)
+    ]
+    executor.return_value = entries
+    client.return_value.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS, "checkout-service"),
+        MagicMock(output_parsed=ToolSelection(stop=True, reasoning="Enough")),
+    ]
+    investigate(state)
+    prompt = client.return_value.responses.parse.call_args_list[1].kwargs["input"]
+    presentation = assert_prompt_evidence(prompt, state)
+    visible = {item.evidence_id for item in presentation.observations}
+    assert visible and len(visible) < len(entries)
+    for entry in entries:
+        if entry.id not in visible:
+            assert entry.id not in prompt
+            assert entry.message not in prompt
+    assert state.evidence_ids == [entry.id for entry in entries]
+    assert state.tool_history[0].observations == [str(entry) for entry in entries]
+
+
+@patch("traceroot.agent.investigation.execute_tool")
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_bounded_context_preserves_empty_call_broadening(client, executor):
+    state = add_large_history(create_test_state())
+    state.tool_history.append(
+        ToolCallRecord(tool_name="metrics", service="checkout-service")
+    )
+    before = state.model_dump()
+    client.return_value.responses.parse.return_value = create_mock_llm_response(
+        ToolName.DEPLOYMENTS, "checkout-service"
+    )
+    executor.return_value = []
+    investigate(state, max_tool_calls=3)
+    prompt = client.return_value.responses.parse.call_args.kwargs["input"]
+    assert_prompt_evidence(prompt, InvestigationState.model_validate(before))
+    summary = query_metadata(prompt)["tool_summaries"]["metrics"]
+    assert summary["queried"]
+    assert summary["calls"][0]["service"] == "checkout-service"
+    assert summary["calls"][0]["returned_count"] == 0
+    executor.assert_called_once_with(
+        tool_name=ToolName.DEPLOYMENTS, incident_id=state.incident.id, service=None
+    )
+    assert [record.model_dump() for record in state.tool_history[:2]] == before[
+        "tool_history"
+    ]
+    assert state.evidence_ids == before["evidence_ids"]
+
+
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_small_tool_history_remains_fully_visible_to_selection_prompt(client):
+    state = create_test_state()
+    state.tool_history = [
+        ToolCallRecord(
+            tool_name="logs",
+            evidence_ids=["SMALL-1", "SMALL-2"],
+            observations=["First fact", "Second fact"],
+        )
+    ]
+    state.evidence_ids = ["SMALL-1", "SMALL-2"]
+    before = state.model_dump()
+    client.return_value.responses.parse.return_value = MagicMock(
+        output_parsed=ToolSelection(stop=True, reasoning="Enough")
+    )
+    investigate(state)
+    result = assert_prompt_evidence(
+        client.return_value.responses.parse.call_args.kwargs["input"], state
+    )
+    assert len(result.observations) == 2
+    assert not result.partial
+    assert [r.model_dump() for r in state.tool_history] == before["tool_history"]
+    assert state.evidence_ids == before["evidence_ids"]
