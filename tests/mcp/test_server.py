@@ -83,6 +83,7 @@ def test_get_logs_serializes_evidence(mock_execute_tool):
             "service": "checkout-service",
             "level": "ERROR",
             "message": "request failed",
+            "labels": {},
         },
         {
             "id": "log-2",
@@ -90,6 +91,7 @@ def test_get_logs_serializes_evidence(mock_execute_tool):
             "service": "checkout-service",
             "level": "INFO",
             "message": "retry succeeded",
+            "labels": {},
         },
     ]
 
@@ -135,6 +137,7 @@ def test_get_metrics_serializes_evidence(mock_execute_tool):
             "metric": "latency",
             "value": 125.5,
             "unit": "ms",
+            "labels": {},
         }
     ]
 

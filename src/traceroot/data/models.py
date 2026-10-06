@@ -11,6 +11,7 @@ class LogEntry(BaseModel):
     service: str
     level: str
     message: str
+    labels: dict[str, str] = Field(default_factory=dict)
 
 
 class MetricEntry(BaseModel):
@@ -20,6 +21,7 @@ class MetricEntry(BaseModel):
     metric: str
     value: float
     unit: str
+    labels: dict[str, str] = Field(default_factory=dict)
 
 
 class DeploymentEntry(BaseModel):

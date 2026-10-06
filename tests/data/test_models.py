@@ -1,4 +1,7 @@
+import json
 from datetime import UTC, datetime
+
+import pytest
 
 from traceroot.data.models import (
     CodeChangeEntry,
@@ -82,3 +85,45 @@ def test_create_code_change_entry():
         == "Updated database connection pool configuration"
     )
     assert code_change_entry.diff == "- maximumPoolSize: 100\n+ maximumPoolSize: 20"
+
+
+@pytest.fixture(params=[LogEntry, MetricEntry], ids=["log", "metric"])
+def historical_evidence(request):
+    fields = {
+        "id": "LOG-001" if request.param is LogEntry else "METRIC-001",
+        "timestamp": "2026-09-20T12:00:00Z",
+        "service": "checkout-service",
+    }
+    if request.param is LogEntry:
+        fields.update(level="INFO", message="Request complete")
+    else:
+        fields.update(metric="request_duration", value=0.125, unit="seconds")
+    return request.param, fields
+
+
+def test_evidence_labels_default_to_independent_empty_dicts(historical_evidence):
+    model, fields = historical_evidence
+    first, second = model(**fields), model(**fields)
+    assert first.labels == second.labels == {}
+    assert first.labels is not second.labels
+    first.labels["instance"] = "a"
+    assert second.labels == {}
+
+
+def test_historical_evidence_json_loads_without_provenance_fields(historical_evidence):
+    model, fields = historical_evidence
+    entry = model.model_validate_json(json.dumps(fields))
+    assert entry.labels == {}
+    assert entry.model_dump(mode="json", exclude={"labels"}) == fields
+    assert set(model.model_fields) == set(fields) | {"labels"}
+
+
+def test_evidence_labels_round_trip_through_json(historical_evidence):
+    model, fields = historical_evidence
+    labels = {"instance": "a", "route": "/café", "empty": ""}
+    entry = model(**fields, labels=labels)
+    encoded = entry.model_dump_json()
+    assert json.loads(encoded)["labels"] == labels
+    assert model.model_validate_json(encoded) == entry
+    assert "labels=" in str(entry)
+    assert "/café" in str(entry)
