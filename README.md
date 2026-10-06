@@ -45,18 +45,20 @@ See [Architecture and demo walkthrough](docs/ARCHITECTURE.md) for Mermaid diagra
 - [TR-039 post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md)
 - [Dataset provenance](docs/DATASET_PROVENANCE.md)
 
-## Current state — first release through TR-039
+## Current state — v1.1.0: Live Evidence & Grounded RCA
 
-TraceRoot includes a knowledge-only RAG baseline and an agentic investigator with deterministic logs, metrics, deployments, and code-change tools. The agent generates and verifies hypotheses, gathers operational evidence, and produces an RCA; investigation traces and results are persisted. Evaluation combines DeepEval with deterministic evidence and trace metrics, and runtime instrumentation records latency, token usage, and estimated cost.
+TraceRoot v1.1.0 is released. It includes a knowledge-only RAG baseline and a live-capable agentic investigator with runtime incident intake, fixture/live evidence routing, CLI and basic Streamlit live modes, independently verified RCA claims, and validated telemetry with preserved labels. Completed investigations persist their results and traces. Evaluation combines DeepEval with deterministic evidence and trace metrics; runtime instrumentation records latency, token usage, and estimated cost.
 
-The first release evaluates RAG and Agent approaches on the same frozen six-incident dataset, includes pre- and post-TR-038 comparisons, and provides both CLI and Streamlit demos. See the [failure analysis](docs/TR037_FAILURE_ANALYSIS.md) and [post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md) for detailed methods, results, and limitations.
+Current validation baseline: **964 tests passed**, with Ruff lint and formatting checks passing. Real smoke validation exercised the Prometheus live CLI path with label-rich metrics in persisted traces, distinct Loki evidence IDs for same-message records from `instance-a` and `instance-b`, and an LLM-backed RCA flow that avoided unsupported causal conclusions. These checks demonstrate execution and grounding behavior, not production readiness or measured accuracy gains.
+
+The historical `v1.0-capstone` release evaluates RAG and Agent approaches on the same frozen six-incident dataset, includes pre- and post-TR-038 comparisons, and provides both CLI and Streamlit demos. See the [failure analysis](docs/TR037_FAILURE_ANALYSIS.md) and [post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md) for detailed methods, results, and limitations.
 
 ## Two approaches
 
 | Approach | Input and evidence | Output |
 |---|---|---|
 | Knowledge-only RAG baseline | Incident title/description plus engineering knowledge retrieved from Qdrant | Structured RCA and separate retrieval provenance; operational `evidence_ids` remain empty |
-| Agentic investigation | Incident context, hypotheses, and selected logs, metrics, deployments, and code changes from local incident files | Structured RCA referencing gathered evidence, plus investigation trace |
+| Agentic investigation | Incident context, hypotheses, and selected logs, metrics, deployments, and code changes from frozen local files or configured live providers | Structured RCA checked against gathered observations, plus investigation trace |
 
 The agent does not retrieve the RAG knowledge corpus. Both approaches return `RCAResult`, and ground truth is evaluator-only: it is used for evaluation, never supplied to either approach at runtime. Inputs are not fully at parity: RAG retrieval uses the incident title and description, while the Agent receives richer incident context, including `suspected_services` when present.
 
@@ -81,7 +83,7 @@ Run the tests (external model calls are mocked; a placeholder key satisfies embe
 OPENAI_API_KEY=test-key uv run pytest
 ```
 
-Run the live INC-001 baseline:
+Run the INC-001 baseline with real model calls and the local knowledge corpus:
 
 ```bash
 uv run python scripts/run_baseline.py
@@ -89,7 +91,7 @@ uv run python scripts/run_baseline.py
 
 This embeds the knowledge corpus, creates an in-memory Qdrant index, generates an RCA, and writes `experiments/results/INC-001-rag_baseline.json`. No Qdrant server is required for this script; it does not use the template's `QDRANT_URL`.
 
-Run the live agent through its Python entry point:
+Run the fixture-backed agent with real model calls through its Python entry point:
 
 ```bash
 uv run python - <<'PY'
@@ -106,7 +108,7 @@ print(record.model_dump_json(indent=2))
 PY
 ```
 
-Live runs make model API calls and overwrite the named output artifact if it already exists. Agent evidence tools read local fixtures; no running production or demo service is required.
+These examples make model API calls and overwrite the named output artifact if it already exists. The Agent example uses local fixtures; no running production or demo service is required. To query live providers, use [Live CLI investigations](#live-cli-investigations).
 
 ## Project structure
 
@@ -116,7 +118,8 @@ data/knowledge/       General engineering documentation for RAG
 data/ground_truth/    Evaluator-only answers and supporting evidence labels
 data/evaluation/      Retrieval benchmark
 src/traceroot/        Domain models, data loading, RAG, baseline, tools,
-                      agent, experiment persistence, and evaluation contracts
+                      agent, intake, live integrations, backend routing,
+                      MCP, experiment persistence, and evaluation contracts
 scripts/run_baseline.py            RAG baseline runner
 scripts/investigate.py             Agent CLI / demo harness
 scripts/run_comparison.py          Comparative experiment runner
@@ -131,11 +134,26 @@ docs/TR039_POST_IMPROVEMENT_EVALUATION.md
 
 ## Release scope and future work
 
-The first release / capstone version is complete through TR-039 evaluation work. It uses frozen, file-backed incident evidence for reproducibility, with no real company/customer data. The Streamlit UI is a demo/presentation layer. Live telemetry integrations, production adapters, and MCP are future work; this release is a controlled research prototype, not a production-ready incident response system.
+v1.1.0 — **Live Evidence & Grounded RCA** adds runtime intake, production-style evidence integrations, RCA claim grounding, and telemetry validation/provenance through TR-048. The frozen capstone comparisons remain historical results; they have not been rerun to measure these additions. The Streamlit UI remains a basic demo/presentation layer, and TraceRoot is not production-ready.
+
+Pending work includes **TR-049 — Bounded Evidence Context**, failed investigation persistence, fuller query/source provenance, and remote MCP transport. MCP evidence tools and Agent integration already exist, but calls remain in-process. See the [project board](PROJECT_BOARD.md) for the ordered backlog.
+
+### Live evidence and grounding
+
+| Source | Evidence and boundary |
+|---|---|
+| Loki | Log observations with complete stream labels. Canonical labels, the raw source timestamp, and message determine live log identity; log wording is not automatically true. |
+| Prometheus-compatible API | Strict matrix responses with finite samples. Complete labels, including route/status/method/instance/quantile/le when returned, remain visible in evidence and trace observations. |
+| GitHub releases | Release metadata used as a deployment proxy; not proof of a production rollout. |
+| GitHub commits | Repository code-change evidence; not proof that the code was deployed. |
+
+Malformed Loki/Prometheus HTTP 200 responses, unsupported result types, and malformed records fail explicitly instead of becoming empty evidence. Prometheus NaN/Inf samples are rejected; Loki service selectors use JSON string escaping. Prometheus IDs and fixture IDs are unchanged, and historical evidence JSON without labels still loads.
+
+Citation membership alone is insufficient. After hypothesis verification and RCA candidate generation, a separate LLM claim assessment and deterministic validation check causal support, evidence/observation mappings, rejected hypotheses, and confidence/wording. Assessments are `SUPPORTED`, `PARTIALLY_SUPPORTED`, `UNSUPPORTED`, or `CONTRADICTED`. Unqueried sources, queried-empty sources, and sources with evidence are distinguished: an empty deployment query is a limitation, not proof no deployment occurred. Partial support requires cautious language. A rejected candidate can be repaired once and independently reverified; unresolved support leads to cautious fallback. Initial generation failures and investigations with no evidence can still raise errors.
 
 ## Streamlit UI
 
-The Streamlit app is a demo/presentation layer over the investigation and evaluation flows. Frozen incidents have local operational evidence; manually created incidents currently have no live telemetry integration.
+The Streamlit app is a basic demo/presentation layer over the investigation and evaluation flows. Frozen incidents use local evidence; **Live Incident** creates a runtime incident and queries configured providers. It is not a production dashboard.
 
 From the repository root, install dependencies with `uv sync`, configure
 `OPENAI_API_KEY` in `.env` or the environment, then run:
@@ -211,6 +229,8 @@ offset). Providers query windows around that time. `--suspected-service` is opti
 and repeatable; these services are leads, not forced tool filters. Both GitHub
 providers use the single repository/service mapping in configuration.
 
+Live bootstrap uses environment-driven `LiveEvidenceConfig` to construct the providers and an evidence backend router. `RuntimeIncidentRegistry` registration selects live versus fixture evidence behind the unchanged tool contract.
+
 The CLI creates and registers a runtime incident, explicitly activates live routing,
 and runs the existing agent pipeline. It prints the generated incident ID and saves
 the trace to `experiments/results/live/<runtime-id>-agent.json`. It creates no fixture
@@ -219,4 +239,4 @@ inputs or configuration exit with code 2; execution failures exit with code 1.
 No evidence means the existing guardrail prevents final RCA generation.
 
 Existing fixture commands, result paths, and overwrite behavior remain unchanged.
-Streamlit live-mode wiring remains pending.
+Streamlit live mode uses the same runtime components with an investigation-scoped executor. Failed investigation persistence and bounded evidence context remain pending.

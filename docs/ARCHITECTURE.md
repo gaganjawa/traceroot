@@ -1,24 +1,31 @@
 # TraceRoot architecture
 
-## Purpose and first-release scope
+## Purpose and release scope
 
 **TraceRoot — Evidence-Grounded Production Incident Investigator** asks:
 
 > Can agentic evidence gathering improve root-cause identification and evidence grounding compared with knowledge-only RAG for software production incidents?
 
-This guide describes the first-release implementation through **TR-039**: knowledge-only RAG, agentic investigation with deterministic operational tools and guardrails, final RCA generation, trace persistence, unified evaluation, and runtime token/cost instrumentation. The reproducible evaluation uses a frozen six-incident dataset and includes pre- and post-TR-038 comparisons. See the [project board](../PROJECT_BOARD.md), [TR-037 failure analysis](TR037_FAILURE_ANALYSIS.md), and [TR-039 post-improvement evaluation](TR039_POST_IMPROVEMENT_EVALUATION.md) for implementation status and detailed findings.
+This guide describes **v1.1.0 — Live Evidence & Grounded RCA**, released through TR-048: runtime incident intake, fixture/live evidence routing, CLI and basic UI live modes, claim grounding, telemetry validation/provenance, trace persistence, evaluation, and runtime instrumentation. The current full-suite baseline is **964 passed**. The reproducible capstone evaluation remains the historical frozen six-incident dataset with pre- and post-TR-038 comparisons; those results do not measure the later release additions. See the [project board](../PROJECT_BOARD.md), [TR-037 failure analysis](TR037_FAILURE_ANALYSIS.md), and [TR-039 post-improvement evaluation](TR039_POST_IMPROVEMENT_EVALUATION.md) for implementation status and detailed findings.
 
 ## Simplified architecture
 
 ```mermaid
 flowchart TB
-    I[Incident description] --> R[Knowledge-only RAG baseline]
+    U[CLI or basic Streamlit UI] --> I[Fixture or runtime incident]
+    I --> R[Knowledge-only RAG baseline]
     I --> A[Agentic investigation]
     K[Engineering knowledge documents] --> C[Chunk and embed]
     C --> Q[Qdrant knowledge index]
     Q --> R
-    E[Local operational evidence files] --> T[Deterministic evidence tools]
-    T --> A
+    A --> T[Evidence tools and backend router]
+    T --> F[Fixture backend]
+    T --> L[Live backend]
+    E[Local operational evidence files] --> F
+    Cfg[Live configuration and bootstrap] --> L
+    Src[Loki / Prometheus / GitHub] --> L
+    F --> A
+    L --> A
     R --> RR[Structured RCA and retrieval provenance]
     A --> AR[Structured RCA and investigation trace]
     RR -->|Persist raw output before scoring| P[Persisted experiment records]
@@ -29,9 +36,9 @@ flowchart TB
     M --> X[Comparison artifacts]
 ```
 
-The runtime paths have different evidence access by design. RAG retrieves general engineering documentation. The Agent chooses operational evidence tools and does not call the knowledge retriever. Ground truth has no input edge into either runtime path. Raw RAG and Agent records are persisted before scoring; the unified runner then produces evaluation records and comparison summaries.
+The runtime paths have different evidence access by design. RAG retrieves general engineering documentation. The Agent chooses operational evidence tools and does not call the knowledge retriever. Ground truth has no input edge into either runtime path. Completed RAG and Agent records are persisted before scoring; the unified runner produces evaluation records and comparison summaries for the frozen evaluation incidents. Live smoke validation is separate from those comparisons.
 
-The implementation uses Python, Pydantic models, OpenAI model calls, and Qdrant for knowledge retrieval. Despite the historical ticket name “LangGraph Investigation State,” orchestration is a synchronous Python function and bounded loop, not a LangGraph graph. MCP is optional stretch work.
+The implementation uses Python, Pydantic models, OpenAI model calls, and Qdrant for knowledge retrieval. Despite the historical ticket name “LangGraph Investigation State,” orchestration is a synchronous Python function and bounded loop, not a LangGraph graph. MCP evidence tools and Agent integration are implemented in-process; remote transport remains future work.
 
 ## Data and experimental boundaries
 
@@ -91,32 +98,41 @@ flowchart TD
     S --> B{Tool budget remaining?}
     B -- No --> V[Verify hypotheses using gathered observations]
     B -- Yes --> L[Select tool and optional service]
-    L --> G{Stop requested or duplicate executed pair?}
+    L --> G{Stop requested?}
     G -- Yes --> V
     G -- No --> W{Previous targeted call was empty<br/>and selected service repeats?}
-    W -- Yes --> X[Execute selected tool with service=None]
-    W -- No --> T[Execute selected tool and service]
-    X --> U[Gather observations and deduplicate evidence IDs]
-    T --> U
+    W -- Yes --> X[Use service=None]
+    W -- No --> T[Keep selected service]
+    X --> Pair{Executed tool/service pair already attempted?}
+    T --> Pair
+    Pair -- Yes --> V
+    Pair -- No --> Exec[Execute evidence query]
+    Exec --> U[Gather observations and deduplicate evidence IDs]
     U --> N{Stop rule reached?}
     N -- Yes --> V
     N -- No --> B
     V --> E{Any gathered evidence IDs?}
     E -- No --> F[Raise error; no final RCA]
-    E -- Yes --> R[Generate final RCA]
-    R --> C{All cited IDs were gathered?}
-    C -- No --> F
-    C -- Yes --> P[Persist experiment record and trace]
+    E -- Yes --> R[Generate RCA candidate and check cited IDs]
+    R --> C[Independent LLM claim verification]
+    C --> D{Deterministic grounding validation}
+    D -- Accept --> P[Persist experiment record and trace]
+    D -- Reject --> Fix[Repair once]
+    Fix --> Re[Independently reverify and validate]
+    Re -- Accept --> P
+    Re -- Still unsupported --> Fall[Cautious fallback]
+    Fall --> P
 ```
 
 1. **Generate hypotheses:** create up to three initial hypotheses from incident information, including `suspected_services`. They start as `OPEN`.
 2. **Select tool/service:** the model chooses `logs`, `metrics`, `deployments`, or `code_changes`, optionally filtered by service.
-3. **Execute deterministic tool:** the dispatcher reads incident-scoped local files; tools do not call an LLM or query live infrastructure.
+3. **Execute evidence tool:** `EvidenceBackendRouter` routes registered runtime incidents to `LiveEvidenceBackend` and other incidents to `FixtureEvidenceBackend`. Fixture queries are deterministic; live providers query configured sources and validate/map their responses without LLM involvement.
 4. **Gather and deduplicate evidence:** append observations and add unseen evidence IDs to the investigation state. Tool history retains each call's observations and IDs.
 5. **Apply stop rules:** the loop can end on the tool-call budget (default six), explicit model stop, duplicate `(tool_name, service)` pair, or two consecutive empty results.
 6. **Verify hypotheses:** after evidence gathering, classify existing hypotheses as `OPEN`, `SUPPORTED`, or `REJECTED`. Verification is not interleaved after each tool call.
-7. **Generate RCA:** synthesize a structured final RCA from the incident, assessed hypotheses, and gathered observations. If no evidence was gathered, RCA generation raises an error.
-8. **Validate citations and persist:** reject final citations that reference IDs not gathered, then save the RCA, hypotheses, gathered IDs, tool history, stop information, model, execution measurements, and timestamp.
+7. **Generate RCA candidate:** synthesize from the incident, assessed hypotheses, and gathered observations; reject unknown citation IDs. No gathered evidence or an initial generation failure raises an error.
+8. **Verify claims and validate grounding:** independently assess the candidate against observed evidence and query limitations, then deterministically check the assessment and wording/confidence policies. Accept a supported candidate, or repair once and independently reverify. Unresolved support or expected verifier/repair failures produce cautious fallback.
+9. **Persist:** save the accepted or cautious RCA, hypotheses, gathered IDs, tool history, stop information, model, execution measurements, and timestamp. Failed-run persistence remains pending.
 
 ### TR-038 investigation change
 
@@ -130,7 +146,9 @@ It also added a deterministic broadening guardrail. If the previous targeted too
 
 Both paths return `RCAResult`: incident ID, root cause, affected service, evidence IDs, explanation, and optional confidence. Experiment records wrap the result with approach-specific provenance and execution metadata.
 
-The Agent validates that final cited IDs belong to the gathered set. Membership does not prove that evidence causally supports the answer, the root cause is correct, or all necessary evidence was collected. The validator also does not require a nonempty final citation list when some evidence was gathered. Model confidence is self-reported, not calibrated accuracy. Hypothesis verification still matches assessments using hypothesis descriptions rather than stable hypothesis IDs, and assessment reasoning is not retained in hypothesis state.
+The Agent checks citation membership and independently verifies major causal claims as `SUPPORTED`, `PARTIALLY_SUPPORTED`, `UNSUPPORTED`, or `CONTRADICTED`. Deterministic validation checks evidence/observation mappings, protects rejected hypotheses from promotion, and enforces confidence/wording rules. Partial support requires `Strongest current hypothesis:` wording with confidence at most `0.60` or unspecified. One repair attempt is independently reverified; unresolved grounding produces cautious fallback. Expected verifier/repair failures also fall back; initial generation failures retain error behavior.
+
+Grounding context distinguishes unqueried, queried-empty, and queried-nonempty sources. An empty deployment query reports no matches for that query, not proof that deployment never happened. A recent commit is not runtime deployment proof, and log text such as "after deployment" remains untrusted evidence content. Citation membership alone is insufficient, and LLM claim assessment does not guarantee causal truth. Model confidence is self-reported, not calibrated accuracy. Hypothesis verification still matches descriptions rather than stable IDs, and its assessment reasoning is not retained in hypothesis state.
 
 ## Evaluation architecture
 
@@ -208,12 +226,12 @@ These are descriptive capstone results, not a claim of statistical significance 
 ## Architecture trade-offs
 
 - **Synchronous Python loop instead of LangGraph:** the current investigation flow is small and bounded; introducing graph orchestration was not necessary for the experiment.
-- **Deterministic operational tools:** deterministic lookups isolate Agent reasoning from evidence retrieval behavior and make evaluation reproducible.
+- **Deterministic fixture tools:** local lookups isolate Agent reasoning from evidence retrieval behavior in evaluation; live source contents can change between queries.
 - **File-backed evidence:** frozen local fixtures make evaluation reproducible without depending on external-system availability.
 - **Qdrant and embeddings for RAG:** semantic retrieval over the small engineering knowledge corpus provides relevant context while preserving retrieval provenance.
 - **Separate RAG and Agent evidence paths:** RAG uses general engineering knowledge while the Agent gathers operational evidence, directly testing knowledge-only reasoning versus operational evidence gathering.
-- **Future adapters:** live observability, deployment, and code integrations can be added behind the existing tool contracts; they are not part of this release.
-- **MCP:** remains optional stretch work and is not required for the first-release evaluation.
+- **Live adapters:** Loki, Prometheus-compatible metrics, GitHub releases, and GitHub commits share the existing evidence contract with fixture tools.
+- **MCP:** evidence server and Agent integration are in-process; remote transport remains pending.
 
 ### File-backed evaluation vs production adapters
 
@@ -227,10 +245,10 @@ existing TraceRoot tool contracts
 agent investigation
 ```
 
-A future production mode could preserve the same investigation workflow while adapters connect live systems to those contracts:
+The implemented live mode preserves the investigation workflow while adapters connect configured sources:
 
 ```text
-live logs / metrics / traces / deployment / Git systems
+Loki / Prometheus-compatible metrics / GitHub releases and commits
     ->
 adapters
     ->
@@ -239,7 +257,18 @@ same TraceRoot tool contracts
 same investigation workflow
 ```
 
-Potential adapter sources include Splunk, CloudWatch, or Elasticsearch for logs; Prometheus, Datadog, or Grafana-compatible sources for metrics; OpenTelemetry for traces; Kubernetes, Argo CD, or CI/CD systems for deployments; and GitHub or GitLab for code changes. These live integrations are **not implemented** in the current first release.
+`RuntimeIncidentRegistry` stores dynamically created incidents. `LiveEvidenceConfig` loads environment settings; `build_live_runtime()` constructs the registry, providers, backends, and router without querying sources or activating routing. CLI live mode registers the incident and explicitly activates its router. Streamlit live mode uses an investigation-scoped executor, avoiding global router activation for each UI investigation. Routing depends on registry membership, not incident-ID prefixes.
+
+| Provider | Evidence semantics |
+|---|---|
+| Loki | Validated stream responses become log observations with complete labels. JSON literal escaping protects service selectors. IDs hash canonical stream labels, the exact raw timestamp string, and message, distinguishing streams with identical timestamp/message. |
+| Prometheus-compatible API | Validated matrix responses become finite metric samples with complete labels, including returned `__name__`. Existing label-aware metric IDs are unchanged. |
+| GitHub releases | Deployment/release metadata proxy, not proof of a production rollout. |
+| GitHub commits | Repository code changes, not proof code reached a running service. |
+
+Malformed HTTP 200 telemetry, unsupported result types, and malformed streams/series/samples fail explicitly; valid empty responses remain empty. Prometheus NaN/Inf samples are rejected. Both telemetry models default `labels` to independent empty dictionaries, preserving historical JSON compatibility and fixture IDs. Complete sorted labels enter evidence stringification and persisted tool observations; they are source metadata, not instructions. Raw Loki nanoseconds affect identity internally but are not a new public timestamp field. Endpoint/query-window provenance is not yet a full provenance framework.
+
+Live configuration and CLI/UI usage are documented in the [README](../README.md#live-cli-investigations). Real smoke validation exercised label-rich Prometheus traces, distinct Loki IDs for `instance-a`/`instance-b`, and LLM-backed grounded RCA without unsupported causal conclusions. The release remains production-oriented rather than production-ready. Bounded evidence context (TR-049), failed investigation persistence, and remote MCP transport are pending. Further adapters such as Splunk, CloudWatch, OpenTelemetry traces, Kubernetes rollout evidence, and GitLab remain future work.
 
 ## Three-minute demo explanation
 

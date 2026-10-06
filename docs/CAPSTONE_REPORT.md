@@ -1,5 +1,7 @@
 # TraceRoot Capstone Report
 
+This report preserves the historical **v1.0-capstone** experiment through TR-039; its results and implementation discussion describe that evaluated system. The current released milestone is **v1.1.0 — Live Evidence & Grounded RCA**, with runtime intake, fixture/live backends, CLI/basic UI live modes, TR-047 claim grounding, and TR-048 telemetry validation/label preservation. The current full-suite baseline is **964 passed**. These additions have separate live smoke validation and are not measured by the frozen comparisons below. See [Architecture](ARCHITECTURE.md) and [System Design](SYSTEM_DESIGN.md) for current behavior.
+
 ## 1. Problem Definition
 
 Software production incident root-cause analysis (RCA) is often slow because useful evidence is spread across logs, metrics, deployments, code changes, and engineering knowledge. Knowledge-only retrieval-augmented generation (RAG) can retrieve general documentation but cannot inspect incident-specific operational evidence. TraceRoot compares this baseline with an Agent that actively gathers operational evidence.
@@ -53,7 +55,7 @@ TR-038 focused on investigation selection. Its prompt treats `suspected_services
 
 A synchronous Python loop replaces the originally contemplated LangGraph orchestration: the bounded, simple investigation flow did not require graph orchestration for this experiment. Deterministic tools improve reproducibility, and file-backed evidence avoids external-system dependencies. Qdrant supports semantic knowledge retrieval with provenance. Separate RAG and Agent evidence paths directly support the research question, while intentionally providing different evidence access.
 
-MCP remains optional stretch work. Future adapters could connect logs from Splunk / CloudWatch / Elasticsearch; metrics from Prometheus / Datadog / Grafana-compatible sources; traces from OpenTelemetry; deployments from Kubernetes / Argo CD / CI/CD; and code changes from GitHub / GitLab. Adapters should preserve existing tool contracts. These live integrations are **not part of the current release**.
+At the capstone evaluation milestone, MCP and live adapters were future work. Potential adapters included logs from Splunk / CloudWatch / Elasticsearch; metrics from Prometheus / Datadog / Grafana-compatible sources; traces from OpenTelemetry; deployments from Kubernetes / Argo CD / CI/CD; and code changes from GitHub / GitLab. Adapters should preserve existing tool contracts. They were **not part of the evaluated capstone release**; v1.1.0 now includes in-process MCP, Loki, Prometheus-compatible metrics, and GitHub release/commit providers.
 
 ## 4. Evaluation Design
 
@@ -74,7 +76,7 @@ Evidence and trace metrics are deterministic for a saved trace and ground truth.
 
 Execution records capture latency, LLM calls, tool calls, investigation steps, input tokens, output tokens, total tokens, and estimated runtime cost. Runtime cost covers instrumented generation/investigation calls; evaluator/judge cost is separate when absent from execution metrics. These values are not an all-in evaluation invoice.
 
-`experiments/comparison/` holds the initial TR-036 run; `experiments/comparison-post-tr038/` holds the re-evaluation. Each contains `raw/`, `evaluations/`, and `summary.json`. The saved artifacts and TR-037/TR-039 reports establish measured findings; some comparative ticket statuses in `PROJECT_BOARD.md` remain stale.
+`experiments/comparison/` holds the initial TR-036 run; `experiments/comparison-post-tr038/` holds the re-evaluation. Each contains `raw/`, `evaluations/`, and `summary.json`. The saved artifacts and TR-037/TR-039 reports establish historical measured findings; `PROJECT_BOARD.md` tracks current implementation and release status.
 
 ## 5. Initial Comparative Results
 
@@ -137,7 +139,7 @@ TR-038 improved several investigation behaviors, but better gathering did not co
 - **Experimental scope:** Only six synthetic/adapted frozen incidents, no live production telemetry, and one pre-improvement and one post-improvement run. There is no statistical significance claim or basis for general production-performance conclusions.
 - **Variability and comparability:** LLM generation and the LLM judge are stochastic; unchanged RAG scores varied between runs. RAG uses title/description while Agent context includes `suspected_services` when present. Evidence access differs intentionally.
 - **Hypothesis state:** Current verification matches descriptions instead of stable hypothesis IDs. Assessment reasoning is not retained in hypothesis state, limiting inspection of hypothesis updates.
-- **Grounding and synthesis:** Evidence-ID membership does not prove causal correctness. Final citation membership validation guarantees neither completeness nor a nonempty citation list when evidence was gathered. Better evidence does not guarantee better synthesis. Supporting-label completeness and hidden-trigger observability remain unresolved concerns.
+- **Grounding and synthesis:** Evidence-ID membership does not prove causal correctness. In the evaluated capstone version, final citation membership validation guaranteed neither completeness nor a nonempty citation list when evidence was gathered. v1.1.0 adds independent claim verification, deterministic validation, bounded repair, and cautious fallback; the historical comparison does not measure their impact. Better evidence does not guarantee better synthesis. Supporting-label completeness and hidden-trigger observability remain unresolved concerns.
 - **Cost scope:** Recorded runtime cost may exclude evaluator/judge calls and must not be read as total evaluation cost.
 
 ## 9. Conclusion

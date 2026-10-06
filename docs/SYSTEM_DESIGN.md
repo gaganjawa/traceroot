@@ -8,7 +8,7 @@ TraceRoot is an evidence-grounded production incident investigator that compares
 
 > Can agentic evidence gathering improve root-cause identification and evidence grounding compared with knowledge-only RAG for software production incidents?
 
-The first release is a local, controlled capstone experiment over six frozen synthetic/adapted incidents. RAG retrieves general engineering knowledge; the Agent investigates incident-specific logs, metrics, deployments, and code changes. **Ground truth is evaluator-only and never enters either runtime context.** The Agent does not call the knowledge retriever.
+The current released milestone is **v1.1.0 — Live Evidence & Grounded RCA**, with a full-suite baseline of **964 passed**. It adds live-capable investigation through TR-048 while preserving the historical `v1.0-capstone` experiment over six frozen synthetic/adapted incidents. RAG retrieves general engineering knowledge; the Agent investigates incident-specific logs, metrics, deployments, and code changes. **Ground truth is evaluator-only and never enters either runtime context.** The Agent does not call the knowledge retriever.
 
 Reading guide: [README](../README.md), [Architecture](ARCHITECTURE.md), [Capstone Report](CAPSTONE_REPORT.md), [Dataset Provenance](DATASET_PROVENANCE.md), [TR-037 Failure Analysis](TR037_FAILURE_ANALYSIS.md), and [TR-039 Post-Improvement Evaluation](TR039_POST_IMPROVEMENT_EVALUATION.md). This document focuses on implemented architecture; section 13 explicitly describes future evolution.
 
@@ -18,39 +18,39 @@ Reading guide: [README](../README.md), [Architecture](ARCHITECTURE.md), [Capston
 
 | Capability | Implemented behavior |
 |---|---|
-| Load an incident | Validate local incident JSON as `Incident`; load operational fixtures as `IncidentDataset`. |
+| Load an incident | Load fixture JSON or create a runtime `Incident` and register it in `RuntimeIncidentRegistry`. |
 | Run knowledge-only RAG RCA | Retrieve engineering knowledge and generate a structured RCA with retrieval provenance. |
 | Generate Agent hypotheses | Generate up to three initial hypotheses by default from incident context. |
 | Select operational tools | LLM selects a tool and optional service, or requests a stop. |
-| Gather evidence | Deterministic queries return logs, metrics, deployments, and code changes. |
+| Gather evidence | Route to deterministic fixture queries or live Loki, Prometheus-compatible metrics, GitHub releases, and GitHub commits. |
 | Enforce guardrails | Bound queries, broaden conditionally, prevent duplicate executed pairs, and stop after two empty results. |
 | Verify hypotheses | Classify existing hypotheses as open, supported, or rejected after investigation. |
-| Generate final RCA | Synthesize gathered observations and validate cited evidence IDs. |
+| Generate final RCA | Generate a candidate, independently verify claims, validate grounding, then accept or repair once and reverify; unresolved support produces cautious fallback. |
 | Persist results and traces | Save experiment records; comparison additionally saves evaluations and a summary. |
 | Evaluate both approaches | Unified runner combines LLM-based quality metrics with deterministic Agent evidence/trace metrics. |
-| Expose demos | Agent CLI, baseline/comparison scripts, and Streamlit Agent UI with optional completed-result evaluation. |
+| Expose demos | Fixture/live Agent CLI and basic Streamlit UI, baseline/comparison scripts, and optional completed-fixture-result evaluation. |
 
-The Streamlit new-incident form exists, but supplies an empty temporary evidence dataset. The current RCA generator rejects investigations with no gathered evidence; this form does not provide a working live-evidence investigation path.
+Streamlit **Live Incident** creates a runtime incident and queries configured providers. The separate **New Incident** demo still supplies empty local evidence and cannot generate an RCA under the no-evidence guardrail. The UI is a basic presentation/input layer, not a production dashboard.
 
 ### 2.2 Non-Functional Requirements
 
 | Concern | Current mechanism and boundary |
 |---|---|
 | Reproducibility | Frozen fixtures, fixed comparison configuration, stable IDs, and saved outputs; LLM outputs are still stochastic. |
-| Deterministic evidence access | Local typed records and explicit filters; tools contain no LLM calls. |
-| Evidence provenance | Operational IDs and per-call observations; RAG chunk IDs, sources, and similarity scores. |
+| Evidence access | Deterministic fixture filters or validated live provider responses; evidence tools contain no LLM calls. |
+| Evidence provenance | Operational IDs, complete telemetry labels, and per-call observations; RAG chunk IDs, sources, and similarity scores. Query/source provenance is not a full framework. |
 | Ground-truth isolation | Runtime loaders omit truth; comparison loads labels only after both raw records are saved. This is an application boundary, not an OS security boundary. |
 | Bounded Agent execution | Default six-tool-call budget, counting existing history; does not constitute a wall-clock timeout or a six-LLM-call limit. |
 | Trace observability | Executed tool/service, reasoning, observations, IDs, hypothesis statuses, and stop details in JSON. |
 | Cost and latency measurement | Instrumented generation usage, elapsed runtime, and estimated token-based cost. |
 | Testability | Typed Pydantic contracts, mocked model calls, deterministic tool tests, and in-memory Qdrant tests under `tests/`. |
 
-### 2.3 Out of Scope for First Release
+### 2.3 Remaining Production Scope
 
-- Live production telemetry integration.
-- Production incident intake integrations.
-- Production deployment.
-- MCP integration.
+- Additional telemetry providers and external alert/intake integrations.
+- Production deployment and access controls.
+- Remote MCP transport; current MCP calls are in-process.
+- Bounded evidence context (TR-049) and failed investigation persistence.
 - Distributed orchestration.
 - Real-time multi-user scale.
 
@@ -58,7 +58,7 @@ The Streamlit new-incident form exists, but supplies an empty temporary evidence
 
 ```mermaid
 flowchart TB
-    U["User / CLI / Streamlit"] --> I["Incident"]
+    U["User / CLI / Streamlit"] --> I["Fixture or runtime incident"]
     subgraph RAG["Knowledge-only RAG"]
         K["Knowledge corpus"] --> C["Chunk and embed"]
         C --> Q["Qdrant"]
@@ -67,18 +67,21 @@ flowchart TB
     end
     subgraph AGENT["Agentic investigator"]
         H["Generate hypotheses"] --> S["Tool selection and guardrails"]
-        S --> T["Deterministic tool layer"]
-        F["Local logs / metrics / deployments / code changes"] --> T
+        S --> T["Evidence tools and backend router"]
+        F["Fixture backend: local evidence"] --> T
+        LIVE["Live backend: Loki / Prometheus / GitHub"] --> T
+        CFG["Live configuration and bootstrap"] --> LIVE
         T --> E["Gather evidence and record observations"]
         E -->|Continue| S
         E -->|Stop| V["Verify hypotheses"]
         S -->|Stop| V
-        V --> AC["Final RCA and citation validation"]
+        V --> AC["RCA candidate, claim verification and validation"]
+        AC --> POLICY["Accept or repair once, reverify and fall back if needed"]
     end
     I --> R
     I --> H
     RC --> P["Persist raw results / traces BEFORE scoring"]
-    AC --> P
+    POLICY --> P
     subgraph EVAL["Evaluation-only boundary"]
         P --> EV["Unified evaluation"]
         GT["Evaluator-only ground truth"] --> EV
@@ -88,10 +91,10 @@ flowchart TB
 
 | Component | Responsibility |
 |---|---|
-| Entry points and incident loading | Select local incident input and invoke the relevant workflow; the UI exposes Agent investigation. |
+| Entry points and incident loading | Load fixtures or create/register runtime incidents; CLI/UI live paths construct configured evidence runtimes. |
 | RAG | Index general Markdown knowledge, retrieve context, and generate an RCA without operational evidence. |
-| Agent | Decide which evidence to inspect, maintain state, verify hypotheses, and synthesize an RCA. |
-| Tool layer | Read incident-scoped fixtures with optional service filtering; return original typed evidence. |
+| Agent | Select evidence, maintain state, verify hypotheses, and generate/verify RCA claims with bounded repair and cautious fallback. |
+| Tool layer | Route by runtime registry membership to fixture or live backends, preserving the shared typed evidence contract. |
 | Persistence | Save generated results and provenance before evaluators can score them. |
 | Evaluation | Compare completed outputs with hidden labels and observed context; store scores separately. |
 
@@ -112,11 +115,12 @@ flowchart LR
         PY --> EV
         EV --> A
     end
+    PY -->|Live evidence requests| SRC["Loki / Prometheus / GitHub APIs"]
     PY -->|Model and embedding requests| API["OpenAI API"]
     EV -->|LLM judge requests| API
 ```
 
-`scripts/run_baseline.py` and `src/traceroot/evaluation/comparison.py` instantiate `QdrantClient(":memory:")`: **no Qdrant server is required**. The Agent-only path does not need Qdrant. Evidence tools read local files; OpenTelemetry Demo supplies scenario provenance and is **not a runtime dependency**. This is a local application topology, not a deployed service architecture.
+`scripts/run_baseline.py` and `src/traceroot/evaluation/comparison.py` instantiate `QdrantClient(":memory:")`: **no Qdrant server is required**. The Agent-only path does not need Qdrant. Fixture tools read local files; live providers query configured endpoints. OpenTelemetry Demo supplies frozen-dataset scenario provenance and is **not a runtime dependency**. This is a local application topology, not a deployed service architecture.
 
 ## 5. Core Component Design
 
@@ -125,10 +129,13 @@ Paths below are relative to the repository root.
 | Component | Actual modules and symbols | Design responsibility |
 |---|---|---|
 | Incident Loader | `src/traceroot/data/loader.py`: `load_incident()`, `load_incident_dataset()`; `domain/incident.py`: `Incident`; `data/models.py`: `IncidentDataset` (under `src/traceroot/`) | Parse incident and evidence fixtures. Neither model contains ground truth. |
+| Runtime intake and bootstrap | `src/traceroot/intake/service.py`: `create_incident()`; `intake/registry.py`: `RuntimeIncidentRegistry`; `config.py`: `LiveEvidenceConfig`, `load_live_evidence_config()`; `bootstrap.py`: `build_live_runtime()`, `activate_live_runtime()` (under `src/traceroot/`) | Construct live providers and a shared registry/router. Construction makes no source calls; CLI activates routing, while UI passes an investigation-scoped executor. |
 | RAG Pipeline | `src/traceroot/rag/loader.py`: `load_knowledge_corpus()`; `chunker.py`: `chunk_document()`; `embeddings.py`: `embed_text()`, `embed_texts()`; `index.py`: `create_knowledge_collection()`, `index_chunks()`; `retriever.py`: `retrieve()` (all latter files under `src/traceroot/rag/`) | Load metadata, chunk, embed, index, and retrieve knowledge. |
 | RAG RCA generator | `src/traceroot/baseline/rag.py`: `run_rag_baseline()`, `generate_rca()`, `RAGBaselineResult` | Build incident/context prompts and return `RCAResult` plus retrieval results. |
-| Agent Orchestrator | `src/traceroot/experiments/agent.py`: `run_agent_experiment()`; `src/traceroot/agent/state.py`: `InvestigationState`; `hypothesis.py`: `generate_hypotheses()`; `investigation.py`: `investigate()`; `verification.py`: `verify_hypotheses()`; `rca.py`: `generate_final_rca()` (latter files under `src/traceroot/agent/`) | Run the synchronous hypothesis → investigation → verification → synthesis sequence. |
-| Deterministic Tool Layer | `src/traceroot/tools/logs.py`: `query_logs()`; `metrics.py`: `query_metrics()`; `deployments.py`: `query_deployments()`; `changes.py`: `query_code_changes()`; `interface.py`: `ToolName`, `execute_tool()` (latter files under `src/traceroot/tools/`) | Dispatch incident/service queries to typed local records. The dispatcher exposes service filtering; underlying logs/metrics functions support additional filters. |
+| Agent Orchestrator | `src/traceroot/experiments/agent.py`: `run_agent_experiment()`; `src/traceroot/agent/state.py`: `InvestigationState`; `hypothesis.py`: `generate_hypotheses()`; `investigation.py`: `investigate()`; `verification.py`: `verify_hypotheses()`; `rca.py`: `generate_final_rca()` (latter files under `src/traceroot/agent/`) | Run the synchronous hypothesis → investigation → hypothesis verification → RCA candidate → claim verification/validation → accept or bounded repair/fallback sequence. |
+| Evidence Tool Layer | `src/traceroot/tools/logs.py`: `query_logs()`; `metrics.py`: `query_metrics()`; `deployments.py`: `query_deployments()`; `changes.py`: `query_code_changes()`; `interface.py`: `ToolName`, `execute_tool()` (latter files under `src/traceroot/tools/`) | Dispatch through `EvidenceBackend`, with `FixtureEvidenceBackend`, `LiveEvidenceBackend`, and `EvidenceBackendRouter` in `tools/backend.py`, `tools/live_backend.py`, and `tools/router.py`. Registry membership selects live evidence; underlying fixture logs/metrics functions support additional filters. |
+| RCA grounding | `src/traceroot/agent/grounding.py`: `build_grounding_context()`, `verify_rca_claims()`, `validate_claim_report()`, `build_cautious_rca()` | Preserve query limitations, independently verify causal claims, validate evidence references/policy, and provide cautious fallback. |
+| Live providers | `src/traceroot/integrations/live_logs.py`, `live_metrics.py`, `live_deployments.py`, `live_code_changes.py` | Query Loki, Prometheus-compatible metrics, GitHub releases, and GitHub commits in incident time windows. |
 | Persistence Layer | `src/traceroot/experiments/models.py`: `BaselineExperimentRecord`, `AgentExperimentRecord`, `RetrievedKnowledge`; `src/traceroot/experiments/persistence.py`: `persist()`, `save_baseline_record()`, `save_agent_experiment_record()` | Serialize JSON and create parent directories. Store baseline provenance or Agent trace, result, model, timestamp, and usage. |
 | Comparison and summaries | `src/traceroot/evaluation/comparison.py`: `run_incident_comparison()`; `scripts/run_comparison.py`: `main()` | Save raw/evaluation artifacts; write configuration, results, and failures into `summary.json`. |
 | Evaluation Layer | `src/traceroot/evaluation/runner.py`: `evaluate_rag_record()`, `evaluate_agent_record()`; metric modules `root_cause_accuracy.py`, `faithfulness.py`, `relevancy.py`, `evidence.py`, `agent_trace.py`, `efficiency.py` in that package | Apply LLM metrics, deterministic evidence/trace metrics, and execution accounting. |
@@ -221,6 +228,10 @@ classDiagram
 
 `HypothesisStatus` is `open`, `supported`, or `rejected`; initial status is `open`. Evidence references are string IDs, not embedded domain `Evidence` objects. `GroundTruth` is supplied to evaluation functions, not stored inside `InvestigationState` or `EvaluationResult`.
 
+`LogEntry` and `MetricEntry` each include `labels: dict[str, str]` with an independent empty default. Complete validated source labels are retained in sorted key order, without fabricating missing service or metric-name labels. Normalized-field fallbacks remain. Historical JSON without labels loads, and fixture IDs are unchanged. Tool observations use `str(entry)`, so labels reach RCA prompts and persisted traces.
+
+Loki live IDs hash canonical JSON containing complete stream labels, the exact raw nanosecond timestamp string, and message. Different streams with identical timestamp/message remain distinct; raw nanoseconds affect identity internally, not as a new public field. Prometheus retains its existing label-aware ID algorithm. Labels and log messages are source evidence data, not trusted instructions.
+
 ## 7. Knowledge-Only RAG Design
 
 ```mermaid
@@ -278,10 +289,15 @@ flowchart TD
     STOP --> V["Verify existing hypotheses"]
     V --> HAS{"Any evidence gathered?"}
     HAS -->|No| ERR["Raise error; no completed RCA record"]
-    HAS -->|Yes| RCA["Generate final RCA"]
-    RCA --> VALID{"Cited IDs belong to gathered set?"}
-    VALID -->|No| ERR
-    VALID -->|Yes| P["Persist result and trace"]
+    HAS -->|Yes| RCA["Generate candidate and check cited IDs"]
+    RCA --> CLAIM["Independent LLM claim verification"]
+    CLAIM --> VALID{"Deterministic grounding validation"}
+    VALID -->|Accept| P["Persist result and trace"]
+    VALID -->|Reject| FIX["Repair once"]
+    FIX --> RE["Independently reverify and validate"]
+    RE -->|Accept| P
+    RE -->|Still unsupported| FALL["Cautious fallback"]
+    FALL --> P
 ```
 
 | Stop condition | Emitted `stop_reason` | Behavior |
@@ -295,6 +311,10 @@ flowchart TD
 
 Duplicate detection checks the **actual executed tool/service pair** after this rewrite. `ToolCallRecord.service` records the actual service. The rule does not always fire, and a broadened pair can itself be blocked as a duplicate. Verification occurs once after gathering; it updates existing hypothesis statuses by matching descriptions.
 
+TR-047 follows candidate generation with a separate LLM assessment: `SUPPORTED`, `PARTIALLY_SUPPORTED`, `UNSUPPORTED`, or `CONTRADICTED`. Deterministic validation checks evidence/observation mappings, root-cause assessment, rejected-hypothesis protection, and confidence/wording. Partial support requires `Strongest current hypothesis:` wording and confidence at most `0.60` or unspecified. One repair is independently reverified. Expected verifier/repair failures and unresolved support produce cautious fallback; initial generation failures retain error behavior.
+
+Query context distinguishes unqueried sources, queried sources with zero matches, and sources returning evidence. An empty deployment query does not prove no deployment occurred. A recent commit does not prove runtime deployment, and log wording is not automatically truth. These checks go beyond citation membership without guaranteeing causal correctness.
+
 ## 9. Sequence Diagram — Agent Investigation
 
 ```mermaid
@@ -303,9 +323,9 @@ sequenceDiagram
     participant A as Agent Orchestrator
     participant L as LLM
     participant T as Tool Dispatcher
-    participant E as Local Evidence Store
+    participant E as Fixture or Live Evidence Backend
     participant P as Persistence
-    U->>A: Submit loaded incident and tool budget
+    U->>A: Submit fixture or registered runtime incident and budget
     A->>L: Generate hypotheses from incident
     L-->>A: Structured hypotheses
     loop While budget remains and no stop condition
@@ -319,9 +339,9 @@ sequenceDiagram
                 A->>A: Record duplicate_selection and exit gathering
             else Allowed pair
                 A->>T: execute_tool(tool, incident_id, actual service)
-                T->>E: Load incident-scoped local files
+                T->>E: Route by registry and query incident/service scope
                 E-->>T: Typed evidence records
-                T-->>A: Deterministic filtered results
+                T-->>A: Typed evidence and telemetry labels
                 A->>A: Save observations, deduplicate IDs, and check stop rules
             end
         end
@@ -329,20 +349,29 @@ sequenceDiagram
     A->>L: Verify existing hypotheses using observations
     L-->>A: Hypothesis assessments
     alt Evidence available
-        A->>L: Generate final RCA from state
-        L-->>A: Structured RCA with cited IDs
+        A->>L: Generate RCA candidate from state
+        L-->>A: Structured candidate with cited IDs
         A->>A: Validate citation membership
-        opt Validation succeeds
-            A->>P: Save AgentExperimentRecord
-            P-->>A: Completed write
-            A-->>U: RCA and trace
+        A->>L: Independently verify claims and query limitations
+        L-->>A: Structured claim assessments
+        A->>A: Deterministic grounding validation
+        opt Candidate needs repair
+            A->>L: Repair once with grounding feedback
+            L-->>A: Repaired candidate
+            A->>L: Independently reverify repaired claims
+            L-->>A: New claim assessments
+            A->>A: Validate again
         end
+        A->>A: Accept or use cautious fallback
+        A->>P: Save AgentExperimentRecord
+        P-->>A: Completed write
+        A-->>U: RCA and trace
     else No gathered evidence
         A-->>U: RCA generation error
     end
 ```
 
-Model calls handle reasoning and synthesis. Dispatcher calls perform deterministic lookups, with no model involvement. Invalid structured outputs or unknown final citation IDs raise errors rather than producing a completed experiment record.
+Model calls handle reasoning, synthesis, and claim verification. Evidence backends perform fixture lookups or live source queries without model involvement. The sequence shows normal generation; no gathered evidence or initial candidate-generation failures raise errors. Expected verifier/repair failures produce cautious fallback. Failed-run persistence remains pending.
 
 ## 10. Evaluation Architecture
 
@@ -402,7 +431,8 @@ experiments/
     evaluations/
     summary.json
   results/                      # Standalone baseline / Agent output
-    ui/                         # Unique filenames for completed UI investigations
+    ui/                         # Unique filenames for completed fixture UI investigations
+    live/                       # <runtime-id>-agent.json for completed live CLI/UI runs
 
 docs/                           # Architecture, provenance, and analysis
 ```
@@ -418,7 +448,8 @@ Each incident directory contains `incident.json`, `logs.jsonl`, `metrics.json`, 
 | Two-empty-result stop | Stops unproductive consecutive calls. | Empty results do not prove absence of a cause. |
 | Explicit model stop | Allows early termination with stored reasoning. | Model confidence about completeness may be wrong. |
 | Evidence ID deduplication | Excludes IDs already gathered when adding subsequent tool results. | Per-call history retains overlapping observations. |
-| Final ID membership validation | Rejects citations not in the gathered set; rejects RCA generation without gathered evidence. | Membership does not prove causal correctness; a nonempty final citation list is not enforced. |
+| RCA grounding | Checks citation membership, observed support, rejected hypotheses, and wording/confidence; one repair is independently reverified before acceptance or cautious fallback. | LLM claim assessment cannot guarantee causal truth; no-evidence and initial generation failures can still raise. |
+| Telemetry validation | Validates Loki streams and Prometheus matrices; malformed records fail the query and non-finite metric samples are rejected. | Unsupported result/sample representations are not silently treated as empty evidence. |
 | Ground-truth isolation | Runtime loaders and prompts exclude evaluator labels. | Application-level separation within a shared local filesystem. |
 | Deterministic execution | Same fixture and filters give the same evidence. | LLM tool selection and causal interpretation remain stochastic. |
 | Persisted trace | Completed runs preserve observations, executed selections, and stop details. | No per-step durable checkpoint; interrupted/failed runs need not have a completed trace. |
@@ -427,13 +458,14 @@ A guardrail stop does not establish RCA correctness. The comparison script recor
 
 ## 13. Scaling and Production Evolution
 
-**Future proposal only:** none of the live adapters below currently exists in TraceRoot.
+**Implemented in v1.1.0:** runtime intake, fixture/live backend routing, environment-driven bootstrap, Loki logs, Prometheus-compatible metrics, and GitHub release/commit evidence. Further production evolution remains future work.
 
 ```mermaid
 flowchart LR
-    subgraph CURRENT["Current capstone"]
-        F["Frozen JSON / JSONL files"] --> T["Deterministic tool contracts"]
-        T --> A["Agent workflow"]
+    subgraph CURRENT["Current v1.1.0"]
+        F["Frozen JSON / JSONL files"] --> T["Shared evidence backend contract"]
+        LP["Loki / Prometheus / GitHub providers"] --> T
+        T --> A["Agent workflow and RCA grounding"]
     end
     subgraph FUTURE["Future production evolution"]
         L["Live systems"] --> AD["Source adapters"]
@@ -443,17 +475,17 @@ flowchart LR
     T -.->|Preserve boundary| TC
 ```
 
-| Evidence surface | Potential adapter sources |
+| Evidence surface | Implemented and future sources |
 |---|---|
-| Logs | Splunk / CloudWatch / Elasticsearch |
-| Metrics | Prometheus / Datadog / Grafana-compatible sources |
+| Logs | Loki implemented; Splunk / CloudWatch / Elasticsearch are future adapters. |
+| Metrics | Prometheus-compatible API implemented; Datadog and other APIs remain future adapters. |
 | Traces | OpenTelemetry; there is currently no trace tool in `ToolName`. Mapping to existing records or extending the contract would require design work. |
-| Deployments | Kubernetes / Argo CD / CI/CD |
-| Code changes | GitHub / GitLab |
+| Deployments | GitHub releases implemented as a metadata proxy, not rollout proof; Kubernetes / Argo CD / CI/CD rollout evidence is future work. |
+| Code changes | GitHub commits implemented as repository-change evidence, not deployment proof; GitLab remains future work. |
 
-Adapters could translate source responses into stable, incident-scoped evidence records behind the dispatcher, preserving the Agent/tool boundary. Live responses would require a defined incident/time scope and evidence snapshots to retain reproducibility; deterministic local lookup does not imply deterministic live telemetry.
+Current adapters translate incident-window source responses into typed evidence behind the same Agent/tool boundary. Loki selectors use JSON literal escaping; strict Loki/Prometheus validation prevents malformed HTTP 200 responses from becoming empty evidence. Persisted observations retain full telemetry labels, but endpoint/query-window provenance is not a full replay framework. Deterministic local lookup does not imply deterministic live telemetry.
 
-Production evolution would also need measured capacity targets, durable execution/artifact storage, concurrency control, retries/timeouts, access controls, and telemetry data handling. These are future requirements, not implemented infrastructure or current scale guarantees. Distributed orchestration and multi-user operation remain out of scope for this release.
+Production evolution would also need measured capacity targets, durable execution/artifact storage, concurrency control, retry policies beyond existing provider timeouts, access controls, and telemetry data handling. These are future requirements, not implemented infrastructure or current scale guarantees. Distributed orchestration and multi-user operation remain out of scope for this release.
 
 ## 14. Key Design Trade-offs
 
@@ -461,7 +493,7 @@ Production evolution would also need measured capacity targets, durable executio
 |---|---|---|
 | Synchronous Python loop vs LangGraph | Small, bounded investigation is straightforward to inspect and test. | No graph runtime, durable resume, or distributed scheduling. |
 | Deterministic tools vs LLM-generated evidence | Preserve actual fixture content, stable IDs, and auditability. | Reasoning remains probabilistic; fixture coverage limits conclusions. |
-| File-backed evidence vs live integrations | Reproducible experiments independent of external availability. | Does not validate production integration complexity or telemetry scale. |
+| Fixture and live backends | Preserve reproducible experiments while supporting production-style integrations through one contract. | Live smoke checks do not establish production telemetry scale or reliability. |
 | Knowledge-only RAG vs Agent operational access | Directly tests the value of incident-specific evidence gathering. | Evidence access intentionally differs; richer Agent input also limits comparison parity. |
 | Qdrant semantic retrieval | Retrieve knowledge by meaning and retain source provenance. | Embedding calls and index setup add work; small corpus limits retrieval benchmark discrimination. |
 | Bounded investigation budget | Limits evidence-query work and cost exposure. | May stop before finding causal evidence. |
@@ -485,7 +517,7 @@ Accounting covers instrumented generation/investigation calls using repository p
 
 ## 16. Known Limitations
 
-- Only six incidents, with synthetic/adapted evidence and no live telemetry.
+- The historical comparison covers six incidents with synthetic/adapted evidence, not live telemetry; v1.1.0 live smoke checks are separate validation.
 - One pre-improvement and one post-improvement run; no statistical significance claim.
 - Both LLM generation and the LLM judge are stochastic.
 - RAG receives title/description; Agent receives richer incident context including `suspected_services`.
@@ -494,7 +526,9 @@ Accounting covers instrumented generation/investigation calls using repository p
 - Better evidence gathering does not guarantee better final RCA synthesis.
 - Tool Efficiency measures unique executed pairs, not information gain; Stop Quality has the label mismatch described in section 10.
 - Completed traces do not include durable intermediate checkpoints or the rejected duplicate-selection payload.
-- New UI incidents lack operational evidence and cannot complete RCA generation under the current no-evidence guardrail.
+- The **New Incident** UI demo supplies empty evidence; **Live Incident** queries configured providers. Any investigation with no gathered evidence still cannot generate an RCA.
+- Bounded evidence context (TR-049), failed investigation persistence, full query/source provenance, and remote MCP transport remain pending.
+- GitHub releases and commits do not prove production rollout; labels and logs require interpretation as untrusted source observations.
 - Local synchronous execution, in-memory indexing, and filesystem artifacts do not establish multi-user scalability or production readiness.
 
 ## 17. Final Architecture Summary
@@ -505,4 +539,4 @@ TraceRoot intentionally separates:
 - Operational evidence gathering.
 - Evaluator-only truth.
 
-The main design objective is to make the comparison reproducible and auditable while keeping the investigation workflow extensible to future live adapters.
+The design preserves reproducible, auditable fixture comparisons while supporting live evidence through the same investigation contract. v1.1.0 adds claim grounding and telemetry provenance; further providers and production hardening remain future work.
