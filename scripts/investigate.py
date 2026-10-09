@@ -11,6 +11,7 @@ from traceroot.data.loader import load_incident
 from traceroot.domain.incident import Incident
 from traceroot.experiments.agent import run_agent_experiment
 from traceroot.experiments.models import AgentExperimentRecord
+from traceroot.experiments.persistence import PARTIAL_TRACE_NOTE_PREFIX
 from traceroot.intake.service import create_incident
 
 GETTING_STARTED = """TraceRoot: Getting Started
@@ -219,6 +220,12 @@ def run_live_investigation(
     return record, output_path
 
 
+def _print_partial_trace_notes(exc: Exception) -> None:
+    for note in getattr(exc, "__notes__", ()):
+        if note.startswith(PARTIAL_TRACE_NOTE_PREFIX):
+            print(note, file=sys.stderr)
+
+
 def main() -> None:
 
     parser = build_parser()
@@ -249,6 +256,7 @@ def main() -> None:
             )
         except Exception as exc:
             print(f"Live investigation failed: {exc}", file=sys.stderr)
+            _print_partial_trace_notes(exc)
             raise SystemExit(1) from exc
         print_agent_result(record=record, output_path=output_path)
         return
@@ -267,6 +275,7 @@ def main() -> None:
             max_tool_calls=args.max_tool_calls,
         )
     except FileNotFoundError as ex:
+        _print_partial_trace_notes(ex)
         parser.error(str(ex))
         return
 
