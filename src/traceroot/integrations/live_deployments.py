@@ -11,6 +11,9 @@ from traceroot.domain.incident import Incident
 
 
 class GitHubDeploymentsProvider:
+    _PER_PAGE = 100
+    _MAX_RELEASE_PAGES = 100
+
     def __init__(
         self,
         repo: str,
@@ -40,12 +43,12 @@ class GitHubDeploymentsProvider:
             headers["Authorization"] = f"Bearer {self.token}"
 
         deployments: list[DeploymentEntry] = []
-        page = 1
-        while True:
+        seen: set[str] = set()
+        for page in range(1, self._MAX_RELEASE_PAGES + 1):
             response = httpx.get(
                 f"https://api.github.com/repos/{self.repo}/releases",
                 headers=headers,
-                params={"per_page": 100, "page": page},
+                params={"per_page": self._PER_PAGE, "page": page},
                 timeout=self.timeout_seconds,
             )
             response.raise_for_status()
@@ -53,15 +56,25 @@ class GitHubDeploymentsProvider:
             if not isinstance(payload, list):
                 raise TypeError("Malformed GitHub releases payload: expected a list")
 
+            made_progress = False
             for release in payload:
                 deployment = self._map_release(release)
+                # Track all mapped identities, even outside the incident window.
+                if deployment.id not in seen:
+                    made_progress = True
+                    seen.add(deployment.id)
                 if start_time <= deployment.timestamp <= end_time:
                     deployments.append(deployment)
 
-            # Release ordering need not match published_at; inspect every page.
-            if len(payload) < 100:
+            # Release ordering need not match published_at; do not stop on age.
+            if len(payload) < self._PER_PAGE:
                 break
-            page += 1
+            if not made_progress:
+                raise RuntimeError("GitHub release pagination made no progress")
+        else:
+            raise RuntimeError(
+                "GitHub release pagination limit reached; results may be incomplete"
+            )
 
         return sorted(deployments, key=lambda deployment: deployment.timestamp)
 
