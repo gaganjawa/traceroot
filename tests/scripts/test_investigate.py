@@ -604,3 +604,112 @@ def test_cli_help_requires_no_live_configuration(flag, monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "--live" in output
     assert "--start-time" in output
+
+
+def test_fixture_cli_reports_saved_failure_path_and_reraises(monkeypatch, capsys):
+    import traceback
+
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-001"])
+    error = RuntimeError("pipeline failed")
+    note = "Partial investigation trace saved to: failures/agent-failed-test.json"
+    error.add_note(note)
+    with (
+        patch("scripts.investigate.run_investigation", side_effect=error),
+        pytest.raises(RuntimeError) as caught,
+    ):
+        main()
+    assert caught.value is error
+    # Fixture mode leaves ordinary exceptions unhandled; Python renders the note.
+    assert note in "".join(traceback.format_exception(caught.value))
+    assert not capsys.readouterr().out
+
+
+def test_fixture_cli_file_not_found_reports_saved_failure_path(monkeypatch, capsys):
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-001"])
+    error = FileNotFoundError("evidence missing")
+    note = "Partial investigation trace saved to: failures/agent-failed-test.json"
+    error.add_note(note)
+    with (
+        patch("scripts.investigate.run_investigation", side_effect=error),
+        pytest.raises(SystemExit) as caught,
+    ):
+        main()
+    assert caught.value.code == 2
+    assert note in capsys.readouterr().err
+
+
+def test_live_cli_reports_saved_failure_path_and_exits_one(
+    monkeypatch, capsys, live_config
+):
+    from scripts.investigate import main
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", *live_args()])
+    error = RuntimeError("Provider unavailable")
+    note = "Partial investigation trace saved to: results/live/failures/agent-failed-test.json"
+    error.add_note(note)
+    with (
+        patch("scripts.investigate.load_dotenv"),
+        patch(
+            "scripts.investigate.load_live_evidence_config", return_value=live_config
+        ),
+        patch("scripts.investigate.run_live_investigation", side_effect=error),
+        pytest.raises(SystemExit) as caught,
+    ):
+        main()
+    assert caught.value.code == 1
+    assert caught.value.__cause__ is error
+    output = capsys.readouterr()
+    assert "Live investigation failed: Provider unavailable" in output.err
+    assert note in output.err
+    assert not output.out
+
+
+def test_cli_does_not_report_trace_saved_when_failure_persistence_fails(
+    monkeypatch, capsys, live_config
+):
+    from scripts.investigate import main
+    from traceroot.experiments.agent import run_agent_experiment
+
+    monkeypatch.setattr("sys.argv", ["investigate.py", *live_args()])
+    original = RuntimeError("Provider unavailable")
+
+    def fail_run(incident, config, budget):
+        return run_agent_experiment(incident, Path("results/live/agent.json"), budget)
+
+    with (
+        patch("scripts.investigate.load_dotenv"),
+        patch(
+            "scripts.investigate.load_live_evidence_config", return_value=live_config
+        ),
+        patch("scripts.investigate.run_live_investigation", side_effect=fail_run),
+        patch("traceroot.experiments.agent.generate_hypotheses", side_effect=original),
+        patch(
+            "traceroot.experiments.agent.save_failed_agent_experiment_record",
+            side_effect=OSError("disk full"),
+        ),
+        pytest.raises(SystemExit) as caught,
+    ):
+        main()
+    assert caught.value.code == 1
+    assert caught.value.__cause__ is original
+    output = capsys.readouterr()
+    assert "trace saved" not in (output.out + output.err).lower()
+
+
+def test_successful_cli_output_remains_unchanged(monkeypatch, capsys):
+    from scripts.investigate import main
+
+    record = create_record()
+    target = Path("experiments/results/INC-001-agent.json")
+    print_agent_result(record, target)
+    expected = capsys.readouterr().out
+    monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-001"])
+    with patch("scripts.investigate.run_investigation", return_value=record):
+        main()
+    output = capsys.readouterr()
+    assert output.out == expected
+    assert output.err == ""
