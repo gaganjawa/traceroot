@@ -63,6 +63,8 @@ def evaluate_agent_trace(
     stop_scores = {
         "model_stop": 1.0,
         "duplicate_selection": 0.5,
+        "consecutive_empty_results": 0.5,
+        # Historical/evaluator alias; runtime emits consecutive_empty_results.
         "two_empty_results": 0.5,
         "tool_budget_exhausted": 0.0,
     }

@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+import pytest
+
 from traceroot.agent.state import ToolCallRecord
 from traceroot.domain.ground_truth import GroundTruth
 from traceroot.domain.rca import RCAResult
@@ -167,3 +169,66 @@ def test_agent_trace_handles_empty_tool_history():
 
     assert tool_efficiency.score == 0.0
     assert empty_tool_rate.score == 0.0
+
+
+@pytest.mark.parametrize(
+    "reason, score, passed",
+    [
+        ("tool_budget_exhausted", 0.0, False),
+        ("consecutive_empty_results", 0.5, True),
+        ("model_stop", 1.0, True),
+        ("duplicate_selection", 0.5, True),
+    ],
+)
+def test_agent_trace_recognizes_all_emitted_stop_reasons(reason, score, passed):
+    record = make_record([], [], stop_reason=reason)
+    metric = get_metric(
+        evaluate_agent_trace(record, make_ground_truth()), "Stop Quality"
+    )
+    assert metric.score == score
+    assert metric.passed is passed
+
+
+def test_agent_trace_stop_quality_accepts_two_empty_results_alias():
+    record = make_record([], [], stop_reason="two_empty_results")
+    metric = get_metric(
+        evaluate_agent_trace(record, make_ground_truth()), "Stop Quality"
+    )
+    assert metric.score == 0.5
+    assert metric.passed is True
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [None, "", "unknown_reason", "prefix_consecutive_empty_results", "MODEL_STOP"],
+)
+def test_agent_trace_stop_quality_unknown_reasons_remain_failed(reason):
+    record = make_record([], [], stop_reason=reason)
+    record.stop_reasoning = "model_stop: sufficient evidence"
+    metric = get_metric(
+        evaluate_agent_trace(record, make_ground_truth()), "Stop Quality"
+    )
+    assert metric.score == 0.0
+    assert metric.passed is False
+
+
+@pytest.mark.parametrize(
+    "reason", ["consecutive_empty_results", "two_empty_results", "unknown_reason", None]
+)
+def test_agent_trace_preserves_original_stop_reason_in_metric_explanation(reason):
+    record = make_record([], [], stop_reason=reason)
+    metric = get_metric(
+        evaluate_agent_trace(record, make_ground_truth()), "Stop Quality"
+    )
+    assert metric.reason == f"Investigation stopped with reason: {reason}."
+
+
+@pytest.mark.parametrize(
+    "reason", ["consecutive_empty_results", "two_empty_results", "unknown_reason", None]
+)
+def test_agent_trace_does_not_mutate_stop_reason(reason):
+    record = make_record([], [], stop_reason=reason)
+    before = record.model_dump()
+    evaluate_agent_trace(record, make_ground_truth())
+    assert record.stop_reason == reason
+    assert record.model_dump() == before

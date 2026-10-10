@@ -397,3 +397,75 @@ def test_failure_serialization_precedes_directory_creation(tmp_path, failed_reco
     ):
         save_failed_agent_experiment_record(failed_record, tmp_path / "agent.json")
     assert not (tmp_path / "failures").exists()
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "consecutive_empty_results",
+        "two_empty_results",
+        "tool_budget_exhausted",
+        "model_stop",
+        "duplicate_selection",
+        "some_unknown_reason",
+    ],
+)
+def test_agent_stop_reasons_round_trip_without_normalization(
+    tmp_path, baseline_record, reason
+):
+    record = AgentExperimentRecord(
+        incident_id=baseline_record.incident_id,
+        model=baseline_record.model,
+        hypotheses=[],
+        evidence_ids=[],
+        tool_history=[],
+        stop_reason=reason,
+        result=baseline_record.result,
+        latency_ms=0,
+        timestamp=baseline_record.timestamp,
+    )
+    path = save_agent_experiment_record(record, tmp_path / "agent.json")
+    assert json.loads(path.read_text())["stop_reason"] == reason
+    loaded = AgentExperimentRecord.model_validate_json(path.read_text())
+    assert loaded.stop_reason == reason
+    assert loaded == record
+
+
+@pytest.mark.parametrize("reason", [None, "some_unknown_reason"])
+def test_agent_stop_reason_schema_remains_optional_string(baseline_record, reason):
+    from traceroot.agent.state import InvestigationState
+    from traceroot.domain.incident import Incident
+
+    state = InvestigationState(
+        incident=Incident(
+            id="INC-001",
+            title="Test",
+            description="Test incident",
+            start_time=baseline_record.timestamp,
+        ),
+        stop_reason=reason,
+    )
+    record = AgentExperimentRecord(
+        incident_id=baseline_record.incident_id,
+        model=baseline_record.model,
+        hypotheses=[],
+        evidence_ids=[],
+        tool_history=[],
+        stop_reason=reason,
+        result=baseline_record.result,
+        latency_ms=0,
+        timestamp=baseline_record.timestamp,
+    )
+    for model in (InvestigationState, AgentExperimentRecord):
+        field = model.model_fields["stop_reason"]
+        assert field.annotation == str | None
+        assert not field.is_required()
+        assert field.default is None
+    assert (
+        InvestigationState.model_validate_json(state.model_dump_json()).stop_reason
+        == reason
+    )
+    assert (
+        AgentExperimentRecord.model_validate_json(record.model_dump_json()).stop_reason
+        == reason
+    )
