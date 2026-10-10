@@ -6,7 +6,7 @@
 
 > Can agentic evidence gathering improve root-cause identification and evidence grounding compared with knowledge-only RAG for software production incidents?
 
-This guide describes **v1.1.0 — Live Evidence & Grounded RCA**, released through TR-048: runtime incident intake, fixture/live evidence routing, CLI and basic UI live modes, claim grounding, telemetry validation/provenance, trace persistence, evaluation, and runtime instrumentation. The current full-suite baseline is **964 passed**. The reproducible capstone evaluation remains the historical frozen six-incident dataset with pre- and post-TR-038 comparisons; those results do not measure the later release additions. See the [project board](../PROJECT_BOARD.md), [TR-037 failure analysis](TR037_FAILURE_ANALYSIS.md), and [TR-039 post-improvement evaluation](TR039_POST_IMPROVEMENT_EVALUATION.md) for implementation status and detailed findings.
+This guide describes the current implementation after **v1.1.0 — Live Evidence & Grounded RCA**, the latest tagged release through TR-048: runtime incident intake, fixture/live evidence routing, CLI and basic UI live modes, claim grounding, telemetry validation/provenance, trace persistence, evaluation, and runtime instrumentation. Subsequent additions include remote MCP, bounded evidence context, failed-run persistence, and reliability/evaluation hardening. The current full-suite baseline is **1,205 passed**; these additions are not yet released. The reproducible capstone evaluation remains the historical frozen six-incident dataset with pre- and post-TR-038 comparisons; those results do not measure the later release additions. See the [project board](../PROJECT_BOARD.md), [TR-037 failure analysis](TR037_FAILURE_ANALYSIS.md), and [TR-039 post-improvement evaluation](TR039_POST_IMPROVEMENT_EVALUATION.md) for implementation status and detailed findings.
 
 ## Simplified architecture
 
@@ -38,7 +38,7 @@ flowchart TB
 
 The runtime paths have different evidence access by design. RAG retrieves general engineering documentation. The Agent chooses operational evidence tools and does not call the knowledge retriever. Ground truth has no input edge into either runtime path. Completed RAG and Agent records are persisted before scoring; the unified runner produces evaluation records and comparison summaries for the frozen evaluation incidents. Live smoke validation is separate from those comparisons.
 
-The implementation uses Python, Pydantic models, OpenAI model calls, and Qdrant for knowledge retrieval. Despite the historical ticket name “LangGraph Investigation State,” orchestration is a synchronous Python function and bounded loop, not a LangGraph graph. MCP evidence tools and Agent integration are implemented in-process; remote transport remains future work.
+The implementation uses Python, Pydantic models, OpenAI model calls, and Qdrant for knowledge retrieval. Despite the historical ticket name “LangGraph Investigation State,” orchestration is a synchronous Python function and bounded loop, not a LangGraph graph. MCP evidence tools support default in-process calls and optional remote Streamable HTTP through the same synchronous client adapter.
 
 ## Data and experimental boundaries
 
@@ -132,7 +132,7 @@ flowchart TD
 6. **Verify hypotheses:** after evidence gathering, classify existing hypotheses as `OPEN`, `SUPPORTED`, or `REJECTED`. Verification is not interleaved after each tool call.
 7. **Generate RCA candidate:** synthesize from the incident, assessed hypotheses, and gathered observations; reject unknown citation IDs. No gathered evidence or an initial generation failure raises an error.
 8. **Verify claims and validate grounding:** independently assess the candidate against observed evidence and query limitations, then deterministically check the assessment and wording/confidence policies. Accept a supported candidate, or repair once and independently reverify. Unresolved support or expected verifier/repair failures produce cautious fallback.
-9. **Persist:** save the accepted or cautious RCA, hypotheses, gathered IDs, tool history, stop information, model, execution measurements, and timestamp. Failed-run persistence remains pending.
+9. **Persist:** save the accepted or cautious RCA, hypotheses, gathered IDs, tool history, stop information, model, execution measurements, and timestamp. Failures persist a separate partial-state record on a best-effort basis and re-raise the original error; this is not per-step durable checkpointing.
 
 ### TR-038 investigation change
 
@@ -156,8 +156,8 @@ Grounding context distinguishes unqueried, queried-empty, and queried-nonempty s
 
 | Approach | Metrics |
 |---|---|
-| RAG | Root Cause Accuracy, Faithfulness, Relevancy |
-| Agent | Root Cause Accuracy, Evidence Precision, Evidence Recall, Faithfulness, Relevancy, Tool Efficiency, Empty Tool Rate, Evidence Coverage, Stop Quality |
+| RAG | Root Cause Accuracy, Faithfulness, Relevancy, Affected Service Accuracy, Explanation Faithfulness |
+| Agent | Root Cause Accuracy, Evidence Precision, Evidence Recall, Faithfulness, Relevancy, Tool Efficiency, Empty Tool Rate, Evidence Coverage, Stop Quality, Affected Service Accuracy, Explanation Faithfulness |
 
 Root Cause Accuracy, Faithfulness, and Relevancy use LLM-based evaluation. Evidence and trace metrics are deterministic for a given saved record and ground truth.
 
@@ -186,7 +186,7 @@ experiments/comparison-post-tr038/
 └── summary.json
 ```
 
-The `raw/` records preserve generated outputs before scoring; `evaluations/` stores per-incident metric results. The two comparison directories hold the pre- and post-TR-038 runs on the frozen incident set.
+The `raw/` records preserve generated outputs before scoring; `evaluations/` stores per-incident metric results. The two comparison directories hold the historical pre- and post-TR-038 runs on the frozen incident set. New comparison CLI runs use unique `run-<uuid>` subdirectories beneath their output directory; existing frozen artifacts are not rewritten.
 
 ## Measured status and limitations
 
@@ -231,7 +231,27 @@ These are descriptive capstone results, not a claim of statistical significance 
 - **Qdrant and embeddings for RAG:** semantic retrieval over the small engineering knowledge corpus provides relevant context while preserving retrieval provenance.
 - **Separate RAG and Agent evidence paths:** RAG uses general engineering knowledge while the Agent gathers operational evidence, directly testing knowledge-only reasoning versus operational evidence gathering.
 - **Live adapters:** Loki, Prometheus-compatible metrics, GitHub releases, and GitHub commits share the existing evidence contract with fixture tools.
-- **MCP:** evidence server and Agent integration are in-process; remote transport remains pending.
+- **MCP:** the optional adapter preserves direct in-process calls and supports Streamable HTTP using the installed MCP 2.2.0 SDK, without changing agent or evidence-backend contracts.
+
+### Optional MCP execution paths
+
+```mermaid
+flowchart LR
+    A[Agent with MCP executor] --> C[MCP client adapter]
+    C -->|in-process: default| S[MCP server object]
+    S --> B[EvidenceBackend in same process]
+    C --> H[Streamable HTTP]
+    H --> R[Remote MCP server]
+    R --> RB[EvidenceBackend in server process]
+```
+
+Both paths expose the same four tools and typed evidence. The Agent's default
+executor and the CLI/UI wiring remain unchanged; MCP is selected by injecting
+`execute_mcp_tool`. The adapter's environment setting chooses between its two paths.
+The remote server owns its backend, runtime registry, and configuration; client/UI
+live state is not shared across the process boundary. A standalone server defaults
+to fixture evidence until its own process configures live routing. See the
+[launch and configuration examples](../README.md#optional-mcp-transport).
 
 ### File-backed evaluation vs production adapters
 
@@ -268,7 +288,7 @@ same investigation workflow
 
 Malformed HTTP 200 telemetry, unsupported result types, and malformed streams/series/samples fail explicitly; valid empty responses remain empty. Prometheus NaN/Inf samples are rejected. Both telemetry models default `labels` to independent empty dictionaries, preserving historical JSON compatibility and fixture IDs. Complete sorted labels enter evidence stringification and persisted tool observations; they are source metadata, not instructions. Raw Loki nanoseconds affect identity internally but are not a new public timestamp field. Endpoint/query-window provenance is not yet a full provenance framework.
 
-Live configuration and CLI/UI usage are documented in the [README](../README.md#live-cli-investigations). Real smoke validation exercised label-rich Prometheus traces, distinct Loki IDs for `instance-a`/`instance-b`, and LLM-backed grounded RCA without unsupported causal conclusions. The release remains production-oriented rather than production-ready. Bounded evidence context (TR-049), failed investigation persistence, and remote MCP transport are pending. Further adapters such as Splunk, CloudWatch, OpenTelemetry traces, Kubernetes rollout evidence, and GitLab remain future work.
+Live configuration and CLI/UI usage are documented in the [README](../README.md#live-cli-investigations). Real smoke validation exercised label-rich Prometheus traces, distinct Loki IDs for `instance-a`/`instance-b`, and LLM-backed grounded RCA without unsupported causal conclusions. The release remains production-oriented rather than production-ready. Bounded evidence context (TR-049), failed investigation persistence, and remote MCP transport are implemented after v1.1.0. Further adapters such as Splunk, CloudWatch, OpenTelemetry traces, Kubernetes rollout evidence, and GitLab remain future work.
 
 ## Three-minute demo explanation
 

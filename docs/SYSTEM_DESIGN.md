@@ -8,7 +8,7 @@ TraceRoot is an evidence-grounded production incident investigator that compares
 
 > Can agentic evidence gathering improve root-cause identification and evidence grounding compared with knowledge-only RAG for software production incidents?
 
-The current released milestone is **v1.1.0 — Live Evidence & Grounded RCA**, with a full-suite baseline of **964 passed**. It adds live-capable investigation through TR-048 while preserving the historical `v1.0-capstone` experiment over six frozen synthetic/adapted incidents. RAG retrieves general engineering knowledge; the Agent investigates incident-specific logs, metrics, deployments, and code changes. **Ground truth is evaluator-only and never enters either runtime context.** The Agent does not call the knowledge retriever.
+The current released milestone is **v1.1.0 — Live Evidence & Grounded RCA**, with subsequent unreleased productionization work bringing the current full-suite baseline to **1,205 passed**. It adds live-capable investigation through TR-048 while preserving the historical `v1.0-capstone` experiment over six frozen synthetic/adapted incidents. RAG retrieves general engineering knowledge; the Agent investigates incident-specific logs, metrics, deployments, and code changes. **Ground truth is evaluator-only and never enters either runtime context.** The Agent does not call the knowledge retriever.
 
 Reading guide: [README](../README.md), [Architecture](ARCHITECTURE.md), [Capstone Report](CAPSTONE_REPORT.md), [Dataset Provenance](DATASET_PROVENANCE.md), [TR-037 Failure Analysis](TR037_FAILURE_ANALYSIS.md), and [TR-039 Post-Improvement Evaluation](TR039_POST_IMPROVEMENT_EVALUATION.md). This document focuses on implemented architecture; section 13 explicitly describes future evolution.
 
@@ -49,10 +49,60 @@ Streamlit **Live Incident** creates a runtime incident and queries configured pr
 
 - Additional telemetry providers and external alert/intake integrations.
 - Production deployment and access controls.
-- Remote MCP transport; current MCP calls are in-process.
-- Bounded evidence context (TR-049) and failed investigation persistence.
+- Remote server live-runtime ownership/configuration and fuller query/source provenance.
+- MCP authentication, TLS management, retries/backoff, service discovery, persistent sessions, and Kubernetes/deployment orchestration.
 - Distributed orchestration.
 - Real-time multi-user scale.
+
+### 2.4 Optional MCP transport
+
+Streamable HTTP is the smallest service-oriented addition supported by the installed
+MCP 2.2.0 SDK. It serves the existing tool registrations at `/mcp`; there is no SDK
+upgrade or second set of tools. Stdio server launch remains available. The MCP adapter
+defaults to in-process mode for backward compatibility; it does not replace the
+Agent's default executor or automatically rewire the CLI/UI.
+
+`execute_mcp_tool()` preserves the synchronous contract and uses `asyncio.run()`.
+In-process mode directly awaits `mcp.call_tool()` and keeps its existing permissive
+response behavior. Remote mode enters `Client(url, read_timeout_seconds=timeout)`
+once per synchronous tool call. The SDK negotiates the connection and owns session
+cleanup. Calls do not cache sessions or list tools before each request. Async context
+exit closes resources after success, call failure, or response-validation failure;
+the SDK unwinds connection resources if entering the context fails. Callers already
+running an event loop still cannot call this synchronous adapter directly.
+
+Transport, HTTP(S) URL, and positive finite timeout are validated before connection.
+The default SDK request read timeout is configured to 30 seconds by TraceRoot; this
+is distinct from the SDK HTTP client's connect/write/pool and streaming read timeouts.
+See [README configuration](../README.md#optional-mcp-transport) for environment names.
+
+Remote responses must contain structured content with a `result` list; each entry
+must validate into its expected evidence model. Valid empty lists remain valid.
+MCP tool errors include returned text details; connection, timeout, and protocol
+exceptions propagate with their original causes. Tool names, `incident_id`/optional
+`service` arguments, evidence models, and `EvidenceBackend`/Agent contracts remain
+unchanged.
+
+**Live ownership limitation:** a remote MCP server cannot automatically see the
+client/UI process's `RuntimeIncidentRegistry` or live backend state. Live remote
+operation requires the remote server process itself to own and configure the live
+backend/runtime and register incidents. The standalone server defaults to fixtures;
+transport configuration does not synchronize live state.
+
+Authentication, TLS management, retries/backoff, service discovery, persistent MCP
+sessions, and Kubernetes/deployment orchestration are out of scope.
+
+### 2.5 Other post-v1.1.0 hardening
+
+Shared bounded evidence context limits prompt-facing observations without truncating
+stored investigation evidence. Failed investigations persist partial state on a
+best-effort basis while preserving the original error. GitHub release pagination
+rejects non-progress and stops at a finite page bound instead of returning silently
+incomplete results. Comparison CLI runs receive unique output directories, and
+embedding configuration/client creation is deferred until embeddings are requested.
+Affected Service Accuracy and Explanation Faithfulness broaden evaluation for new
+runs; historical scores and conclusions remain unchanged. Stop-reason compatibility
+is described in section 10.
 
 ## 3. High-Level Architecture
 
@@ -371,7 +421,7 @@ sequenceDiagram
     end
 ```
 
-Model calls handle reasoning, synthesis, and claim verification. Evidence backends perform fixture lookups or live source queries without model involvement. The sequence shows normal generation; no gathered evidence or initial candidate-generation failures raise errors. Expected verifier/repair failures produce cautious fallback. Failed-run persistence remains pending.
+Model calls handle reasoning, synthesis, and claim verification. Evidence backends perform fixture lookups or live source queries without model involvement. The sequence shows normal generation; no gathered evidence or initial candidate-generation failures raise errors. Expected verifier/repair failures produce cautious fallback. Failed investigations now attempt to persist a separate partial-state record, including failure stage/type and execution measurements, then re-raise the original error. Failure-record persistence is best-effort, not durable per-step checkpointing.
 
 ## 10. Evaluation Architecture
 
@@ -394,12 +444,12 @@ flowchart TB
 
 | Approach | Metrics |
 |---|---|
-| RAG | Root Cause Accuracy, Faithfulness, Relevancy |
-| Agent | Root Cause Accuracy, Evidence Precision, Evidence Recall, Faithfulness, Relevancy, Tool Efficiency, Empty Tool Rate, Evidence Coverage, Stop Quality |
+| RAG | Root Cause Accuracy, Faithfulness, Relevancy, Affected Service Accuracy, Explanation Faithfulness |
+| Agent | Root Cause Accuracy, Evidence Precision, Evidence Recall, Faithfulness, Relevancy, Tool Efficiency, Empty Tool Rate, Evidence Coverage, Stop Quality, Affected Service Accuracy, Explanation Faithfulness |
 
 | Metric family | Meaning and implementation boundary |
 |---|---|
-| LLM-based | DeepEval `GEval`, `FaithfulnessMetric`, and `AnswerRelevancyMetric`; evaluate the `root_cause` text. Faithfulness uses retrieved knowledge for RAG and tool observations for Agent. |
+| LLM-based | DeepEval `GEval`, `FaithfulnessMetric`, and `AnswerRelevancyMetric` evaluate root-cause text; Explanation Faithfulness separately evaluates the explanation. Faithfulness uses retrieved knowledge for RAG and tool observations for Agent. |
 | Evidence Precision / Recall | Set overlap between final cited IDs and ground-truth supporting IDs; deterministic. |
 | Tool Efficiency | Unique executed tool/service pairs divided by executed calls; not information gain. |
 | Empty Tool Rate | Fraction of executed calls returning zero IDs. |
@@ -527,7 +577,7 @@ Accounting covers instrumented generation/investigation calls using repository p
 - Tool Efficiency measures unique executed pairs, not information gain; Stop Quality is a heuristic termination-category score, with compatibility behavior described in section 10.
 - Completed traces do not include durable intermediate checkpoints or the rejected duplicate-selection payload.
 - The **New Incident** UI demo supplies empty evidence; **Live Incident** queries configured providers. Any investigation with no gathered evidence still cannot generate an RCA.
-- Bounded evidence context (TR-049), failed investigation persistence, full query/source provenance, and remote MCP transport remain pending.
+- Bounded evidence context, failed investigation persistence, and remote MCP are implemented. Full query/source provenance and remote server live-runtime setup remain follow-ups.
 - GitHub releases and commits do not prove production rollout; labels and logs require interpretation as untrusted source observations.
 - Local synchronous execution, in-memory indexing, and filesystem artifacts do not establish multi-user scalability or production readiness.
 

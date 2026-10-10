@@ -1012,7 +1012,9 @@ MCP must not delay the core experiment.
 | TR-046 | Simple Investigation UI | 2h | ✅ DONE |
 | TR-047 | RCA Claim Grounding & Negative-Evidence Validation | — | ✅ DONE |
 | TR-048 | Live Telemetry Validation & Provenance Fidelity | — | ✅ DONE |
-| TR-049 | Bounded Evidence Context | — | ⚪ NOT STARTED |
+| TR-049 | Bounded Evidence Context | — | ✅ DONE |
+| TR-050 | Failed Investigation Persistence | — | ✅ DONE |
+| Remote MCP Transport | Optional Streamable HTTP | — | ✅ DONE |
 
 This epic is outside the capstone critical path. The current file-backed incident and evidence sources remain the reproducible evaluation environment.
 
@@ -1059,7 +1061,7 @@ Status:
 - TR-045A, TR-045B, TR-045C1 through TR-045C4, TR-045D, TR-045E, and TR-045F complete
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
 - Previously recorded full project validation: **676 passed** at reviewed repository state `206912a`; lint and formatting passed
-- Current full project validation after TR-048: **964 passed**; Ruff lint and formatting checks passed; not rerun for this board update
+- Historical full project validation at TR-048: **964 passed**; Ruff lint and formatting checks passed; not rerun for this board update
 - Live backend routing, bootstrap configuration, and CLI live-mode wiring complete; real end-to-end live CLI smoke passed; basic Streamlit/UI live-mode wiring complete and merged before TR-047
 
 Goal:
@@ -1351,10 +1353,35 @@ Real Loki smoke:
 ### TR-049 — Bounded Evidence Context
 
 Status:
-- ⚪ NOT STARTED / NEXT after TR-048
+- ✅ DONE after v1.1.0
 
-Planned scope:
+Original planned scope:
 - Bounded evidence context, as recorded in the Codex-review follow-ups
+
+Completed:
+- Shared bounded prompt evidence context; persisted investigation evidence remains intact
+
+### TR-050 — Failed Investigation Persistence
+
+Status: ✅ DONE after v1.1.0
+
+Completed:
+- Best-effort partial investigation records with failure stage/type and execution measurements
+- Original pipeline errors propagate even if partial-record persistence fails
+
+### Remote MCP Transport
+
+Status: ✅ DONE after v1.1.0 (no new numbered ticket assigned)
+
+Completed:
+- Default direct in-process MCP behavior preserved
+- Optional Streamable HTTP client with validated environment configuration
+- One SDK session per synchronous call; strict remote responses and cleanup on failure
+- Same four tool registrations, evidence models, EvidenceBackend and Agent contracts
+- Stdio launch preserved; explicit HTTP host/port launch with `/mcp` endpoint
+- Separate server owns its backend/runtime; client live registry is not transferred
+- Validation: **1,205 passed**; focused MCP client **42**, MCP server **21**, Agent investigation **35**; Ruff checks passed
+- No live network calls in remote unit tests
 
 ---
 
@@ -1423,6 +1450,9 @@ No first-release tickets in progress.
 - TR-046 — Simple Investigation UI
 - TR-047 — RCA Claim Grounding & Negative-Evidence Validation
 - TR-048 — Live Telemetry Validation & Provenance Fidelity
+- TR-049 — Bounded Evidence Context
+- TR-050 — Failed Investigation Persistence
+- Remote MCP Transport
 
 ## 🟣 Stretch
 
@@ -1431,7 +1461,7 @@ No outstanding stretch tickets.
 ## 🔵 Extended Scope
 
 - TR-045 — Live Evidence Integrations (backend foundation, providers, routing, bootstrap, CLI live mode, and basic Streamlit/UI live-mode wiring complete; further production integrations remain extended scope)
-- TR-049 — Bounded Evidence Context (⚪ NOT STARTED / NEXT after TR-048)
+- Further production integrations and fuller query/source provenance remain follow-up work.
 
 ---
 
@@ -1462,9 +1492,11 @@ No outstanding stretch tickets.
 
 **Current release: v1.1.0 — Live Evidence & Grounded RCA, tagged and released.**
 
-The `v1.0-capstone` research milestone and frozen comparison results remain intact. TR-049 is planned follow-up work, not part of v1.1.0.
+The `v1.0-capstone` research milestone and frozen comparison results remain intact. TR-049, TR-050, and remote MCP transport are implemented after v1.1.0. Recommended next release: **v1.2.0 — Remote MCP Transport & Production Hardening** (draft only; no tag/release created). See [draft release notes](docs/RELEASE_NOTES.md).
 
 Current state:
+- Current full-suite baseline: **1,205 passed**; Ruff formatting/lint passed
+- TR-049 bounded evidence context, TR-050 failed investigation persistence, and remote MCP transport complete
 - TR-001 through TR-041 complete, including TR-026A
 - TR-046 Simple Investigation UI complete
 - TR-042 MCP Evidence Server and TR-043 Agent ↔ MCP Integration complete
@@ -1480,7 +1512,7 @@ Current state:
 - Real live CLI path verified from runtime incident creation through evidence gathering, RCA generation, and trace persistence
 - Real live smoke tests succeeded for Loki, Prometheus, GitHub releases, and GitHub commits
 - **799 passed** at TR-047 final validation; targeted grounding/RCA smoke: **76 passed, 21 deselected**; Ruff lint and formatting checks passed; real LLM grounding smoke completed successfully (not rerun for this board update)
-- Current full-suite baseline after TR-048: **964 passed**; targeted TR-048 smoke: **50 passed, 145 deselected**; Loki + Prometheus provider suite: **185 passed**; Ruff lint and formatting checks passed; real Prometheus live CLI path and real Loki provenance/ID smoke verified (not rerun for this board update)
+- Historical full-suite baseline at TR-048: **964 passed**; targeted TR-048 smoke: **50 passed, 145 deselected**; Loki + Prometheus provider suite: **185 passed**; Ruff lint and formatting checks passed; real Prometheus live CLI path and real Loki provenance/ID smoke verified (not rerun for this board update)
 - Knowledge-only RAG and agentic investigation complete
 - Agent CLI/demo harness complete
 - DeepEval setup, RCA accuracy, evidence precision/recall, faithfulness, relevancy, and agent-trace evaluators complete
@@ -1519,7 +1551,7 @@ Next — optional post-release work:
 
 These stretch/extended items are not required for the submitted first release.
 
-1. TR-049 — Bounded Evidence Context: NEXT / ⚪ NOT STARTED; bounded evidence context from the existing review follow-ups
+1. Remote server live-runtime ownership/setup and fuller query/source provenance remain follow-up work
 2. Any post-improvement evaluation remains pending and must be a dedicated run preserving the existing frozen comparison artifacts
 
 Known limitations retained after evaluation:
@@ -1531,15 +1563,17 @@ Known limitations retained after evaluation:
 - Supporting-evidence label completeness and hidden-trigger observability limitations are documented in TR-037
 - Recorded runtime token/cost reporting covers instrumented generation/investigation calls, not all-in embedding and evaluator costs
 
-Codex-review follow-ups — future work:
+Codex-review follow-ups — current status:
 - Telemetry response validation/fidelity and Prometheus label preservation (✅ DONE in TR-048)
 - Loki selector escaping and evidence identity improvements (✅ DONE in TR-048)
-- Bounded evidence context (TR-049 — NEXT / ⚪ NOT STARTED)
-- Failed investigation persistence
-- Deployment pagination limits
-- Evaluation stop-reason mismatch
-- Comparison artifact isolation
-- Lazy embeddings initialization
+- Bounded evidence context (✅ DONE in TR-049)
+- Failed investigation persistence (✅ DONE in TR-050)
+- Deployment pagination limits (✅ DONE; finite bounds and non-progress detection)
+- Evaluation stop-reason mismatch (✅ DONE; canonical reasons and historical alias aligned)
+- Comparison artifact isolation (✅ DONE; unique run directories)
+- Lazy embeddings initialization (✅ DONE)
+- Broader RCA evaluation (✅ DONE; affected service and explanation faithfulness)
+- Remote MCP transport (✅ DONE; in-process remains default)
 - Runtime isolation improvements beyond the scoped execution needed for basic UI wiring
 
 Extended scope after the core capstone:
@@ -1547,4 +1581,6 @@ Extended scope after the core capstone:
 - TR-045 — Live Evidence Integrations (TR-045A/B/C1–C4/D/E/F and basic Streamlit/UI live-mode wiring complete; further production integrations remain extended scope)
 - TR-047 — RCA Claim Grounding & Negative-Evidence Validation (✅ DONE; merged to `main`)
 - TR-048 — Live Telemetry Validation & Provenance Fidelity (✅ DONE; merged to `main`)
-- TR-049 — Bounded Evidence Context (⚪ NOT STARTED / NEXT)
+- TR-049 — Bounded Evidence Context (✅ DONE)
+- TR-050 — Failed Investigation Persistence (✅ DONE)
+- Remote MCP Transport (✅ DONE)

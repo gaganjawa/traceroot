@@ -45,11 +45,13 @@ See [Architecture and demo walkthrough](docs/ARCHITECTURE.md) for Mermaid diagra
 - [TR-039 post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md)
 - [Dataset provenance](docs/DATASET_PROVENANCE.md)
 
-## Current state — v1.1.0: Live Evidence & Grounded RCA
+## Current state — after v1.1.0
 
 TraceRoot v1.1.0 is released. It includes a knowledge-only RAG baseline and a live-capable agentic investigator with runtime incident intake, fixture/live evidence routing, CLI and basic Streamlit live modes, independently verified RCA claims, and validated telemetry with preserved labels. Completed investigations persist their results and traces. Evaluation combines DeepEval with deterministic evidence and trace metrics; runtime instrumentation records latency, token usage, and estimated cost.
 
-Current validation baseline: **964 tests passed**, with Ruff lint and formatting checks passing. Real smoke validation exercised the Prometheus live CLI path with label-rich metrics in persisted traces, distinct Loki evidence IDs for same-message records from `instance-a` and `instance-b`, and an LLM-backed RCA flow that avoided unsupported causal conclusions. These checks demonstrate execution and grounding behavior, not production readiness or measured accuracy gains.
+Since v1.1.0, the implementation adds remote Streamable HTTP MCP, bounded evidence context, failed investigation persistence, and reliability/evaluation improvements. These are unreleased additions; see the [draft release notes](docs/RELEASE_NOTES.md).
+
+Current validation baseline: **1,205 tests passed**, with Ruff lint and formatting checks passing. Real smoke validation exercised the Prometheus live CLI path with label-rich metrics in persisted traces, distinct Loki evidence IDs for same-message records from `instance-a` and `instance-b`, and an LLM-backed RCA flow that avoided unsupported causal conclusions. These checks demonstrate execution and grounding behavior, not production readiness or measured accuracy gains.
 
 The historical `v1.0-capstone` release evaluates RAG and Agent approaches on the same frozen six-incident dataset, includes pre- and post-TR-038 comparisons, and provides both CLI and Streamlit demos. See the [failure analysis](docs/TR037_FAILURE_ANALYSIS.md) and [post-improvement evaluation](docs/TR039_POST_IMPROVEMENT_EVALUATION.md) for detailed methods, results, and limitations.
 
@@ -77,10 +79,10 @@ cp .env.example .env
 
 If `.env` already exists, keep it and fill in any missing settings instead of copying over it. Set `OPENAI_API_KEY` for live runs. The template defaults to `gpt-5.4-mini` for generation and `text-embedding-3-small` for embeddings, with an optional `OPENAI_BASE_URL` override. The knowledge index expects 1536-dimensional embeddings.
 
-Run the tests (external model calls are mocked; a placeholder key satisfies embedding-module initialization):
+Run the tests (external model calls are mocked; embeddings initialize lazily when requested):
 
 ```bash
-OPENAI_API_KEY=test-key uv run pytest
+uv run pytest
 ```
 
 Run the INC-001 baseline with real model calls and the local knowledge corpus:
@@ -110,6 +112,54 @@ PY
 
 These examples make model API calls and overwrite the named output artifact if it already exists. The Agent example uses local fixtures; no running production or demo service is required. To query live providers, use [Live CLI investigations](#live-cli-investigations).
 
+## Optional MCP transport
+
+The MCP client adapter defaults to **in-process** calls to the MCP server object.
+Optional **Streamable HTTP** connects to a separately running service. Both expose
+`get_logs`, `get_metrics`, `get_deployments`, and `get_code_changes`, taking
+`incident_id` and optional `service` and returning the same evidence models.
+
+Start the existing stdio server, or explicitly select HTTP (default endpoint `/mcp`):
+
+```bash
+uv run python -m traceroot.mcp.server
+uv run python -m traceroot.mcp.server --transport streamable-http --host 127.0.0.1 --port 8000
+```
+
+In a separate client process, export:
+
+```bash
+export TRACEROOT_MCP_TRANSPORT=streamable-http
+export TRACEROOT_MCP_SERVER_URL=http://127.0.0.1:8000/mcp
+export TRACEROOT_MCP_TIMEOUT_SECONDS=30
+```
+
+| Client setting | Behavior |
+|---|---|
+| `TRACEROOT_MCP_TRANSPORT` | Defaults to `in-process`; only `in-process` and `streamable-http` are accepted. |
+| `TRACEROOT_MCP_SERVER_URL` | Required for HTTP mode; valid HTTP(S) URL including the full MCP endpoint. |
+| `TRACEROOT_MCP_TIMEOUT_SECONDS` | Defaults to `30`; must be positive and finite; controls remote SDK request read timeout. |
+
+Configuration is validated before connection. The adapter reads process environment
+variables; exporting them avoids relying on `.env` loading by another entry point.
+A fixture-backed call from the client process is:
+
+```python
+from traceroot.mcp.client import execute_mcp_tool
+from traceroot.tools.interface import ToolName
+
+logs = execute_mcp_tool(ToolName.LOGS, "INC-001")
+```
+
+For Agent use, pass `tool_executor=execute_mcp_tool` to `investigate()` or
+`run_agent_experiment()`. These settings select transport only when using the MCP
+adapter; they do not automatically switch the existing CLI/UI executors to MCP.
+
+The separate server defaults to fixtures and owns its backend/runtime state.
+The client/UI `RuntimeIncidentRegistry` and live configuration are **not transferred**;
+remote live evidence requires configuring the live backend and incident registry
+inside the server process. This launch command does not perform that setup.
+
 ## Project structure
 
 ```text
@@ -136,7 +186,7 @@ docs/TR039_POST_IMPROVEMENT_EVALUATION.md
 
 v1.1.0 — **Live Evidence & Grounded RCA** adds runtime intake, production-style evidence integrations, RCA claim grounding, and telemetry validation/provenance through TR-048. The frozen capstone comparisons remain historical results; they have not been rerun to measure these additions. The Streamlit UI remains a basic demo/presentation layer, and TraceRoot is not production-ready.
 
-Pending work includes **TR-049 — Bounded Evidence Context**, failed investigation persistence, fuller query/source provenance, and remote MCP transport. MCP evidence tools and Agent integration already exist, but calls remain in-process. See the [project board](PROJECT_BOARD.md) for the ordered backlog.
+**TR-049 — Bounded Evidence Context**, failed investigation persistence, and remote MCP transport are now implemented after v1.1.0. Fuller query/source provenance and broader production infrastructure remain follow-up work. See the [project board](PROJECT_BOARD.md) for implementation status.
 
 ### Live evidence and grounding
 
@@ -239,4 +289,4 @@ inputs or configuration exit with code 2; execution failures exit with code 1.
 No evidence means the existing guardrail prevents final RCA generation.
 
 Existing fixture commands, result paths, and overwrite behavior remain unchanged.
-Streamlit live mode uses the same runtime components with an investigation-scoped executor. Failed investigation persistence and bounded evidence context remain pending.
+Streamlit live mode uses the same runtime components with an investigation-scoped executor. Failed investigations now attempt to persist partial state, and shared bounded evidence context limits prompt-facing observations while retaining stored evidence.
