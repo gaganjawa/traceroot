@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from traceroot.evaluation.schemas import (
     EvaluationResult,
     EvaluatorType,
@@ -118,9 +121,6 @@ def test_evaluation_result_with_execution_metrics():
 
 
 def test_historical_metric_lists_load_without_new_metric_defaults():
-    import json
-    from pathlib import Path
-
     root = Path(__file__).resolve().parents[2]
     for approach, count in [("rag", 3), ("agent", 9)]:
         path = (
