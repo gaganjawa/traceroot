@@ -115,3 +115,27 @@ def test_evaluation_result_with_execution_metrics():
     assert evaluation_result.execution.output_tokens == 350
     assert evaluation_result.execution.tool_calls == 4
     assert evaluation_result.execution.investigation_steps == 3
+
+
+def test_historical_metric_lists_load_without_new_metric_defaults():
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    for approach, count in [("rag", 3), ("agent", 9)]:
+        path = (
+            root
+            / "experiments"
+            / "comparison"
+            / "evaluations"
+            / f"INC-001-{approach}-eval.json"
+        )
+        data = json.loads(path.read_text())
+        result = EvaluationResult.model_validate(data)
+        assert len(result.metrics) == count
+        assert [metric.model_dump(mode="json") for metric in result.metrics] == data[
+            "metrics"
+        ]
+        assert not {"Affected Service Accuracy", "Explanation Faithfulness"} & {
+            metric.name for metric in result.metrics
+        }
