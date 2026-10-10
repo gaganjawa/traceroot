@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -408,9 +410,6 @@ def test_interrupted_run_has_no_summary(cli):
 
 
 def test_run_comparison_help_without_credentials():
-    import subprocess
-    import sys
-
     code = """
 import os
 import runpy

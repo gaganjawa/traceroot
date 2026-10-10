@@ -6,7 +6,11 @@ import pytest
 from traceroot.agent.state import ToolCallRecord
 from traceroot.domain.ground_truth import GroundTruth
 from traceroot.domain.rca import RCAResult
-from traceroot.evaluation.runner import evaluate_agent_record, evaluate_rag_record
+from traceroot.evaluation.runner import (
+    _evaluate_explanation_faithfulness,
+    evaluate_agent_record,
+    evaluate_rag_record,
+)
 from traceroot.evaluation.schemas import (
     EvaluationResult,
     EvaluatorType,
@@ -458,8 +462,6 @@ def test_runners_append_service_and_explanation_metrics(
 def test_explanation_unavailable_input_avoids_judge(
     judge, explanation, context, reason
 ):
-    from traceroot.evaluation.runner import _evaluate_explanation_faithfulness
-
     metric = _evaluate_explanation_faithfulness("question", explanation, context)
     judge.assert_not_called()
     assert metric.name == "Explanation Faithfulness"
@@ -470,8 +472,6 @@ def test_explanation_unavailable_input_avoids_judge(
 
 @patch("traceroot.evaluation.runner.evaluate_faithfulness")
 def test_explanation_uses_only_usable_context(judge):
-    from traceroot.evaluation.runner import _evaluate_explanation_faithfulness
-
     judge.return_value = make_metric("Faithfulness")
     _evaluate_explanation_faithfulness(
         "question", "explanation", ["", " observation ", "  "]

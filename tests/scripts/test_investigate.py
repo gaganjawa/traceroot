@@ -1,3 +1,6 @@
+import subprocess
+import sys
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -7,13 +10,21 @@ import pytest
 from scripts.investigate import (
     build_parser,
     build_paths,
+    main,
     print_agent_result,
     run_investigation,
+    run_live_investigation,
 )
 from traceroot.agent.state import Hypothesis, HypothesisStatus, ToolCallRecord
+from traceroot.bootstrap import build_live_runtime
+from traceroot.config import LiveEvidenceConfig
 from traceroot.domain.incident import Incident
 from traceroot.domain.rca import RCAResult
+from traceroot.experiments.agent import run_agent_experiment
 from traceroot.experiments.models import AgentExperimentRecord
+from traceroot.intake.service import create_incident
+from traceroot.tools import interface
+from traceroot.tools.models import ToolName
 
 
 def create_record() -> AgentExperimentRecord:
@@ -215,8 +226,6 @@ def test_help_includes_examples_and_arguments(capsys):
 
 
 def test_getting_started_exits_without_incident_or_investigation(monkeypatch, capsys):
-    from scripts.investigate import main
-
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setattr("sys.argv", ["investigate.py", "--getting-started"])
     with (
@@ -253,8 +262,6 @@ def no_external_http():
 
 @pytest.fixture
 def live_config():
-    from traceroot.config import LiveEvidenceConfig
-
     return LiveEvidenceConfig(
         loki_base_url="https://logs.example.test",
         prometheus_base_url="https://metrics.example.test",
@@ -318,8 +325,6 @@ def test_cli_rejects_conflicting_fixture_and_live_modes():
 
 @pytest.mark.parametrize("flag", ["--title", "--description", "--start-time"])
 def test_live_cli_rejects_missing_required_inputs(monkeypatch, flag):
-    from scripts.investigate import main
-
     args = live_args()
     index = args.index(flag)
     del args[index : index + 2]
@@ -344,8 +349,6 @@ def test_live_cli_rejects_missing_required_inputs(monkeypatch, flag):
     ],
 )
 def test_live_cli_rejects_invalid_inputs_before_configuration(monkeypatch, flag, value):
-    from scripts.investigate import main
-
     monkeypatch.setattr("sys.argv", ["investigate.py", *live_args(), flag, value])
     with (
         patch("scripts.investigate.load_live_evidence_config") as config,
@@ -366,8 +369,6 @@ def test_live_cli_rejects_invalid_inputs_before_configuration(monkeypatch, flag,
     ],
 )
 def test_cli_rejects_live_arguments_in_fixture_mode(monkeypatch, flag, value):
-    from scripts.investigate import main
-
     monkeypatch.setattr(
         "sys.argv", ["investigate.py", "--incident-id", "INC-001", flag, value]
     )
@@ -381,8 +382,6 @@ def test_cli_rejects_live_arguments_in_fixture_mode(monkeypatch, flag, value):
 
 
 def test_fixture_cli_does_not_load_live_configuration(monkeypatch, capsys):
-    from scripts.investigate import main
-
     monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-001"])
     with (
         patch(
@@ -399,8 +398,6 @@ def test_fixture_cli_does_not_load_live_configuration(monkeypatch, capsys):
 
 
 def test_fixture_cli_missing_incident_exits_with_code_two(monkeypatch, capsys):
-    from scripts.investigate import main
-
     monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-999"])
     with (
         patch(
@@ -429,8 +426,6 @@ def test_fixture_cli_missing_incident_exits_with_code_two(monkeypatch, capsys):
 def test_live_cli_creates_incident_and_renders_runtime_record(
     monkeypatch, capsys, live_config, services
 ):
-    from scripts.investigate import main
-
     record = create_record()
     record.incident_id = "INC-RUNTIME-123"
     output_path = Path("experiments/results/live/INC-RUNTIME-123-agent.json")
@@ -467,8 +462,6 @@ def test_live_cli_creates_incident_and_renders_runtime_record(
 
 
 def test_live_cli_missing_config_exits_before_activation(monkeypatch, capsys):
-    from scripts.investigate import main
-
     monkeypatch.setattr("sys.argv", ["investigate.py", *live_args()])
     with (
         patch("scripts.investigate.load_dotenv"),
@@ -487,8 +480,6 @@ def test_live_cli_missing_config_exits_before_activation(monkeypatch, capsys):
 def test_live_cli_execution_failure_exits_with_code_one(
     monkeypatch, capsys, live_config
 ):
-    from scripts.investigate import main
-
     monkeypatch.setattr("sys.argv", ["investigate.py", *live_args()])
     with (
         patch("scripts.investigate.load_dotenv"),
@@ -509,12 +500,6 @@ def test_live_cli_execution_failure_exits_with_code_one(
 
 
 def test_live_cli_registers_shared_registry_and_activates_before_agent(live_config):
-    from scripts.investigate import run_live_investigation
-    from traceroot.bootstrap import build_live_runtime
-    from traceroot.intake.service import create_incident
-    from traceroot.tools import interface
-    from traceroot.tools.models import ToolName
-
     incident = create_incident(
         "Failure", "Requests time out", datetime(2026, 10, 3, tzinfo=UTC)
     )
@@ -551,10 +536,6 @@ def test_live_cli_registers_shared_registry_and_activates_before_agent(live_conf
 
 
 def test_live_cli_runner_constructs_runtime_incident_state(live_config):
-    from scripts.investigate import run_live_investigation
-    from traceroot.intake.service import create_incident
-    from traceroot.tools import interface
-
     incident = create_incident(
         "Failure", "Requests time out", datetime(2026, 10, 3, tzinfo=UTC)
     )
@@ -591,8 +572,6 @@ def test_live_cli_runner_constructs_runtime_incident_state(live_config):
 
 @pytest.mark.parametrize("flag", ["--help", "--getting-started"])
 def test_cli_help_requires_no_live_configuration(flag, monkeypatch, capsys):
-    from scripts.investigate import main
-
     monkeypatch.setattr("sys.argv", ["investigate.py", flag])
     with (
         patch("scripts.investigate.load_live_evidence_config") as config,
@@ -607,9 +586,6 @@ def test_cli_help_requires_no_live_configuration(flag, monkeypatch, capsys):
 
 
 def test_fixture_cli_reports_saved_failure_path_and_reraises(monkeypatch, capsys):
-    import traceback
-
-    from scripts.investigate import main
 
     monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-001"])
     error = RuntimeError("pipeline failed")
@@ -627,8 +603,6 @@ def test_fixture_cli_reports_saved_failure_path_and_reraises(monkeypatch, capsys
 
 
 def test_fixture_cli_file_not_found_reports_saved_failure_path(monkeypatch, capsys):
-    from scripts.investigate import main
-
     monkeypatch.setattr("sys.argv", ["investigate.py", "--incident-id", "INC-001"])
     error = FileNotFoundError("evidence missing")
     note = "Partial investigation trace saved to: failures/agent-failed-test.json"
@@ -645,8 +619,6 @@ def test_fixture_cli_file_not_found_reports_saved_failure_path(monkeypatch, caps
 def test_live_cli_reports_saved_failure_path_and_exits_one(
     monkeypatch, capsys, live_config
 ):
-    from scripts.investigate import main
-
     monkeypatch.setattr("sys.argv", ["investigate.py", *live_args()])
     error = RuntimeError("Provider unavailable")
     note = "Partial investigation trace saved to: results/live/failures/agent-failed-test.json"
@@ -671,9 +643,6 @@ def test_live_cli_reports_saved_failure_path_and_exits_one(
 def test_cli_does_not_report_trace_saved_when_failure_persistence_fails(
     monkeypatch, capsys, live_config
 ):
-    from scripts.investigate import main
-    from traceroot.experiments.agent import run_agent_experiment
-
     monkeypatch.setattr("sys.argv", ["investigate.py", *live_args()])
     original = RuntimeError("Provider unavailable")
 
@@ -701,8 +670,6 @@ def test_cli_does_not_report_trace_saved_when_failure_persistence_fails(
 
 
 def test_successful_cli_output_remains_unchanged(monkeypatch, capsys):
-    from scripts.investigate import main
-
     record = create_record()
     target = Path("experiments/results/INC-001-agent.json")
     print_agent_result(record, target)
@@ -716,9 +683,6 @@ def test_successful_cli_output_remains_unchanged(monkeypatch, capsys):
 
 
 def test_investigate_help_without_credentials():
-    import subprocess
-    import sys
-
     code = """
 import os
 import runpy

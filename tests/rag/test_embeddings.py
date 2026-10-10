@@ -1,5 +1,11 @@
+import subprocess
+import sys
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 
+from traceroot.rag import embeddings
 from traceroot.rag.embeddings import embed_text, embed_texts
 
 
@@ -40,8 +46,6 @@ def test_embed_texts_rejects_whitespace_only_text():
 
 @pytest.fixture(autouse=True)
 def isolated_embeddings(monkeypatch):
-    from traceroot.rag import embeddings
-
     embeddings._get_embedding_client.cache_clear()
     monkeypatch.setattr(embeddings, "load_dotenv", lambda: None)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -52,9 +56,6 @@ def isolated_embeddings(monkeypatch):
 
 
 def test_imports_without_credentials():
-    import subprocess
-    import sys
-
     code = """
 import os
 from unittest.mock import patch
@@ -82,8 +83,6 @@ with patch('dotenv.load_dotenv'), patch('openai.OpenAI') as client:
     ],
 )
 def test_invalid_or_empty_input_does_not_initialize_client(function, value):
-    from unittest.mock import patch
-
     with patch("traceroot.rag.embeddings._get_embedding_client") as initialize:
         if value == []:
             assert function(value) == []
@@ -102,9 +101,6 @@ def test_valid_input_requires_credentials_at_call_time():
 def test_embedding_requests_preserve_configuration_and_reuse_client(
     monkeypatch, custom
 ):
-    from types import SimpleNamespace
-    from unittest.mock import patch
-
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     if custom:
         monkeypatch.setenv("OPENAI_BASE_URL", "https://example.test/v1")
