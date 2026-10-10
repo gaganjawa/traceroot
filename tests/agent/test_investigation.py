@@ -956,3 +956,50 @@ def test_small_tool_history_remains_fully_visible_to_selection_prompt(client):
     assert not result.partial
     assert [r.model_dump() for r in state.tool_history] == before["tool_history"]
     assert state.evidence_ids == before["evidence_ids"]
+
+
+@patch("traceroot.agent.investigation.get_llm_client")
+def test_consecutive_empty_stop_reason_matches_evaluator_contract(mock_get_llm_client):
+    from traceroot.domain.ground_truth import GroundTruth
+    from traceroot.domain.rca import RCAResult
+    from traceroot.evaluation.agent_trace import evaluate_agent_trace
+    from traceroot.experiments.models import AgentExperimentRecord
+
+    mock_get_llm_client.return_value.responses.parse.side_effect = [
+        create_mock_llm_response(ToolName.LOGS),
+        create_mock_llm_response(ToolName.METRICS),
+    ]
+    state = investigate(create_test_state(), tool_executor=MagicMock(return_value=[]))
+    assert state.stop_reason == "consecutive_empty_results"
+    # A minimal final result permits evaluating the trace without any RCA API call.
+    record = AgentExperimentRecord(
+        incident_id=state.incident.id,
+        model="test-model",
+        hypotheses=state.hypotheses,
+        evidence_ids=state.evidence_ids,
+        tool_history=state.tool_history,
+        stop_reason=state.stop_reason,
+        stop_reasoning=state.stop_reasoning,
+        result=RCAResult(
+            incident_id=state.incident.id,
+            root_cause="Unknown",
+            evidence_ids=[],
+            explanation="Test trace only",
+        ),
+        latency_ms=0,
+        timestamp=datetime.now(UTC),
+    )
+    truth = GroundTruth(
+        incident_id=state.incident.id,
+        root_cause="Test cause",
+        root_cause_category="configuration_regression",
+        affected_service="checkout-service",
+        supporting_evidence_ids=[],
+    )
+    metric = next(
+        metric
+        for metric in evaluate_agent_trace(record, truth)
+        if metric.name == "Stop Quality"
+    )
+    assert metric.score == 0.5
+    assert metric.passed is True

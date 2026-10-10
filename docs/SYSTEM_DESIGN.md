@@ -406,7 +406,7 @@ flowchart TB
 | Evidence Coverage | Fraction of labeled supporting IDs gathered, regardless of final citation selection. |
 | Stop Quality | Deterministic category score, not proof of investigative completeness. |
 
-Current Stop Quality maps `model_stop` to 1, `duplicate_selection` and `two_empty_results` to 0.5, and `tool_budget_exhausted` to 0. The Agent actually emits `consecutive_empty_results`, which falls through to 0. This documents the current evaluator unchanged.
+The runtime canonical stop reasons are `tool_budget_exhausted`, `model_stop`, `duplicate_selection`, and `consecutive_empty_results`. Stop Quality maps `model_stop` to 1, `duplicate_selection` and `consecutive_empty_results` to 0.5, and `tool_budget_exhausted` to 0. The evaluator also accepts `two_empty_results` as a historical compatibility alias scoring 0.5. Scores of at least 0.5 pass; unknown values, empty strings, and null score 0 and fail. Evaluation preserves the original recorded spelling. Historical stored evaluation artifacts are not rewritten; future reevaluation of consecutive-empty traces uses the corrected score. Stop Quality is a heuristic category score, not proof of RCA correctness or investigative completeness.
 
 `ExecutionMetrics` records latency, LLM calls, tool calls, investigation steps, input tokens, output tokens, total tokens, and estimated runtime cost. Agent tool calls and steps equal history length; RAG has zero tool calls and no populated investigation-step value. Missing usage stays optional rather than becoming a fabricated zero.
 
@@ -524,7 +524,7 @@ Accounting covers instrumented generation/investigation calls using repository p
 - Hypothesis verification matches descriptions instead of stable IDs; assessment reasoning is not retained in hypothesis state.
 - Evidence membership is not causal correctness; labeled supporting sets may omit useful contextual evidence.
 - Better evidence gathering does not guarantee better final RCA synthesis.
-- Tool Efficiency measures unique executed pairs, not information gain; Stop Quality has the label mismatch described in section 10.
+- Tool Efficiency measures unique executed pairs, not information gain; Stop Quality is a heuristic termination-category score, with compatibility behavior described in section 10.
 - Completed traces do not include durable intermediate checkpoints or the rejected duplicate-selection payload.
 - The **New Incident** UI demo supplies empty evidence; **Live Incident** queries configured providers. Any investigation with no gathered evidence still cannot generate an RCA.
 - Bounded evidence context (TR-049), failed investigation persistence, full query/source provenance, and remote MCP transport remain pending.
