@@ -1,6 +1,8 @@
 import argparse
 import json
 from pathlib import Path
+from tempfile import NamedTemporaryFile
+from uuid import uuid4
 
 from traceroot.evaluation.comparison import run_incident_comparison
 
@@ -56,10 +58,13 @@ def parse_args() -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=Path("experiments/comparison"),
-        help="Directory used for raw and evaluated experiment artifacts.",
+        help="Parent directory for a new unique run directory per invocation.",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.incident_ids and len(set(args.incident_ids)) != len(args.incident_ids):
+        parser.error("duplicate --incident-id values are not allowed")
+    return args
 
 
 def main() -> int:
@@ -72,6 +77,11 @@ def main() -> int:
         exist_ok=True,
     )
 
+    run_dir = args.output_dir / f"run-{uuid4().hex}"
+    run_dir.mkdir()  # Exclusive creation: collisions must never reuse a run.
+    (run_dir / "raw" / "failures").mkdir(parents=True)
+    (run_dir / "evaluations").mkdir()
+
     successful_results = []
     failures = []
 
@@ -79,7 +89,7 @@ def main() -> int:
     print(f"Incidents: {', '.join(incident_ids)}")
     print(f"RAG top_k: {args.top_k}")
     print(f"Agent max_tool_calls: {args.max_tool_calls}")
-    print(f"Output: {args.output_dir}")
+    print(f"Output: {run_dir}")
     print()
 
     for incident_id in incident_ids:
@@ -90,7 +100,7 @@ def main() -> int:
                 incident_id=incident_id,
                 top_k=args.top_k,
                 max_tool_calls=args.max_tool_calls,
-                output_dir=args.output_dir,
+                output_dir=run_dir,
             )
 
             successful_results.append(result.model_dump(mode="json"))
@@ -129,14 +139,22 @@ def main() -> int:
         "failures": failures,
     }
 
-    summary_path = args.output_dir / "summary.json"
-
-    summary_path.write_text(
-        json.dumps(
-            summary,
-            indent=2,
-        )
-    )
+    summary_path = run_dir / "summary.json"
+    summary_json = json.dumps(summary, indent=2)
+    temporary_path = None
+    try:
+        with NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=run_dir, suffix=".tmp", delete=False
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(summary_json)
+        temporary_path.replace(summary_path)
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                pass  # Cleanup must not mask the original publication failure.
 
     print(f"Completed: {len(successful_results)}/{len(incident_ids)}")
     print(f"Failures: {len(failures)}")
