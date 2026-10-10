@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
-from unittest.mock import patch
+from unittest.mock import call, patch
+
+import pytest
 
 from traceroot.agent.state import ToolCallRecord
 from traceroot.domain.ground_truth import GroundTruth
@@ -141,14 +143,14 @@ def test_evaluate_rag_record_runs_expected_metrics(
         retrieval_context=context,
     )
 
-    assert len(result.metrics) == 3
+    assert len(result.metrics) == 5
 
     mock_accuracy.assert_called_once_with(
         record.result,
         ground_truth,
     )
 
-    mock_faithfulness.assert_called_once_with(
+    mock_faithfulness.assert_any_call(
         input_text="What caused incident INC-001?",
         actual_output=record.result.root_cause,
         context=context,
@@ -258,7 +260,7 @@ def test_evaluate_agent_record_runs_expected_metrics(
 
     result = evaluate_agent_record(record, ground_truth)
 
-    assert len(result.metrics) == 9
+    assert len(result.metrics) == 11
 
     mock_accuracy.assert_called_once_with(record.result, ground_truth)
     mock_evidence.assert_called_once_with(record.result, ground_truth)
@@ -293,7 +295,7 @@ def test_evaluate_agent_record_flattens_tool_observations_for_faithfulness(
         make_ground_truth(),
     )
 
-    mock_faithfulness.assert_called_once_with(
+    mock_faithfulness.assert_any_call(
         input_text="What caused incident INC-001?",
         actual_output=record.result.root_cause,
         context=[
@@ -376,3 +378,104 @@ def test_evaluate_rag_record_preserves_unavailable_usage(
     assert result.execution.total_tokens is None
     assert result.execution.llm_calls == 1
     assert result.execution.estimated_cost_usd is None
+
+
+@pytest.mark.parametrize("approach", ["rag", "agent"])
+@patch("traceroot.evaluation.runner.evaluate_relevancy")
+@patch("traceroot.evaluation.runner.evaluate_faithfulness")
+@patch("traceroot.evaluation.runner.evaluate_root_cause_accuracy")
+def test_runners_append_service_and_explanation_metrics(
+    accuracy, faithfulness, relevancy, approach
+):
+    accuracy.return_value = make_metric("Root Cause Accuracy")
+    relevancy.return_value = make_metric("Relevancy")
+    judge_metric = MetricResult(
+        name="Faithfulness",
+        score=0.65,
+        passed=False,
+        evaluator_type=EvaluatorType.DEEPEVAL,
+        reason="Partial support",
+    )
+    faithfulness.return_value = judge_metric
+    if approach == "rag":
+        record = make_rag_record()
+        context = ["Retrieved knowledge"]
+        evaluation = evaluate_rag_record(record, make_ground_truth(), context)
+        original_names = ["Root Cause Accuracy", "Faithfulness", "Relevancy"]
+    else:
+        record = make_agent_record()
+        context = [
+            observation
+            for entry in record.tool_history
+            for observation in entry.observations
+        ]
+        evaluation = evaluate_agent_record(record, make_ground_truth())
+        original_names = [
+            "Root Cause Accuracy",
+            "Evidence Precision",
+            "Evidence Recall",
+            "Faithfulness",
+            "Relevancy",
+            "Tool Efficiency",
+            "Empty Tool Rate",
+            "Evidence Coverage",
+            "Stop Quality",
+        ]
+    assert [metric.name for metric in evaluation.metrics] == original_names + [
+        "Affected Service Accuracy",
+        "Explanation Faithfulness",
+    ]
+    assert faithfulness.call_args_list == [
+        call(
+            input_text="What caused incident INC-001?",
+            actual_output=record.result.root_cause,
+            context=context,
+        ),
+        call(
+            input_text="What caused incident INC-001?",
+            actual_output=record.result.explanation,
+            context=context,
+        ),
+    ]
+    explanation_metric = evaluation.metrics[-1]
+    assert explanation_metric.model_dump(exclude={"name"}) == judge_metric.model_dump(
+        exclude={"name"}
+    )
+    assert judge_metric.name == "Faithfulness"
+    assert evaluation.metrics[-2].score == 1.0
+
+
+@pytest.mark.parametrize(
+    "explanation, context, reason",
+    [
+        ("", ["evidence"], "No explanation available."),
+        ("   ", ["evidence"], "No explanation available."),
+        ("explanation", [], "No usable context available."),
+        ("explanation", ["", "  "], "No usable context available."),
+    ],
+)
+@patch("traceroot.evaluation.runner.evaluate_faithfulness")
+def test_explanation_unavailable_input_avoids_judge(
+    judge, explanation, context, reason
+):
+    from traceroot.evaluation.runner import _evaluate_explanation_faithfulness
+
+    metric = _evaluate_explanation_faithfulness("question", explanation, context)
+    judge.assert_not_called()
+    assert metric.name == "Explanation Faithfulness"
+    assert metric.score == 0.0
+    assert metric.passed is False
+    assert metric.reason == reason
+
+
+@patch("traceroot.evaluation.runner.evaluate_faithfulness")
+def test_explanation_uses_only_usable_context(judge):
+    from traceroot.evaluation.runner import _evaluate_explanation_faithfulness
+
+    judge.return_value = make_metric("Faithfulness")
+    _evaluate_explanation_faithfulness(
+        "question", "explanation", ["", " observation ", "  "]
+    )
+    judge.assert_called_once_with(
+        input_text="question", actual_output="explanation", context=[" observation "]
+    )

@@ -5,8 +5,31 @@ from traceroot.evaluation.evidence import evaluate_evidence_precision_recall
 from traceroot.evaluation.faithfulness import evaluate_faithfulness
 from traceroot.evaluation.relevancy import evaluate_relevancy
 from traceroot.evaluation.root_cause_accuracy import evaluate_root_cause_accuracy
-from traceroot.evaluation.schemas import EvaluationResult
+from traceroot.evaluation.schemas import EvaluationResult, EvaluatorType, MetricResult
+from traceroot.evaluation.service_accuracy import evaluate_service_accuracy
 from traceroot.experiments.models import AgentExperimentRecord, BaselineExperimentRecord
+
+
+def _evaluate_explanation_faithfulness(
+    input_text: str, explanation: str, context: list[str]
+) -> MetricResult:
+    usable_context = [text for text in context if text.strip()]
+    if not explanation.strip() or not usable_context:
+        return MetricResult(
+            name="Explanation Faithfulness",
+            score=0.0,
+            passed=False,
+            evaluator_type=EvaluatorType.DETERMINISTIC,
+            reason=(
+                "No explanation available."
+                if not explanation.strip()
+                else "No usable context available."
+            ),
+        )
+    metric = evaluate_faithfulness(
+        input_text=input_text, actual_output=explanation, context=usable_context
+    )
+    return metric.model_copy(update={"name": "Explanation Faithfulness"})
 
 
 def evaluate_rag_record(
@@ -32,6 +55,15 @@ def evaluate_rag_record(
             actual_output=actual_output,
         ),
     ]
+
+    metrics.extend(
+        [
+            evaluate_service_accuracy(record.result, ground_truth),
+            _evaluate_explanation_faithfulness(
+                input_text, record.result.explanation, retrieval_context
+            ),
+        ]
+    )
 
     execution_metrics = create_execution_metrics(
         latency_ms=record.latency_ms,
@@ -89,6 +121,15 @@ def evaluate_agent_record(
             record,
             ground_truth,
         )
+    )
+
+    metrics.extend(
+        [
+            evaluate_service_accuracy(record.result, ground_truth),
+            _evaluate_explanation_faithfulness(
+                input_text, record.result.explanation, agent_context
+            ),
+        ]
     )
 
     execution_metrics = create_execution_metrics(
