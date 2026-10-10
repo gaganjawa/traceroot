@@ -713,3 +713,30 @@ def test_successful_cli_output_remains_unchanged(monkeypatch, capsys):
     output = capsys.readouterr()
     assert output.out == expected
     assert output.err == ""
+
+
+def test_investigate_help_without_credentials():
+    import subprocess
+    import sys
+
+    code = """
+import os
+import runpy
+import sys
+from unittest.mock import patch
+os.environ.pop('OPENAI_API_KEY', None)
+sys.argv = ['investigate.py', '--help']
+with patch('dotenv.load_dotenv'), patch('openai.OpenAI') as client:
+    try:
+        runpy.run_module('scripts.investigate', run_name='__main__')
+    except SystemExit as exc:
+        assert exc.code == 0
+    else:
+        raise AssertionError('help did not exit')
+    client.assert_not_called()
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert "usage:" in result.stdout
