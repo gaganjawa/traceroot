@@ -257,3 +257,48 @@ def test_mcp_server_registers_all_evidence_tools():
         "get_deployments",
         "get_code_changes",
     }
+
+
+@pytest.mark.parametrize(
+    ("args", "expected"),
+    [
+        ([], {}),
+        (["--transport", "stdio"], {}),
+        (
+            ["--transport", "streamable-http"],
+            {"transport": "streamable-http", "host": "127.0.0.1", "port": 8000},
+        ),
+        (
+            ["--transport", "streamable-http", "--host", "localhost", "--port", "9001"],
+            {"transport": "streamable-http", "host": "localhost", "port": 9001},
+        ),
+    ],
+)
+def test_server_launch(args, expected):
+    from traceroot.mcp.server import main
+
+    with patch.object(mcp, "run") as run:
+        main(args)
+    run.assert_called_once_with(**expected)
+
+
+def test_server_rejects_invalid_transport():
+    from traceroot.mcp.server import main
+
+    with patch.object(mcp, "run") as run, pytest.raises(SystemExit):
+        main(["--transport", "invalid"])
+    run.assert_not_called()
+
+
+def test_module_entry_point_preserves_stdio():
+    import runpy
+    import sys
+
+    from traceroot.mcp import server
+
+    with (
+        patch.object(sys, "argv", ["traceroot.mcp.server"]),
+        patch.object(MCPServer, "run") as run,
+    ):
+        runpy.run_path(server.__file__, run_name="__main__")
+    run.assert_called_once_with()

@@ -1,3 +1,5 @@
+import argparse
+
 from mcp.server import MCPServer
 from pydantic import BaseModel
 
@@ -60,5 +62,21 @@ def get_code_changes(
     return _get_evidence(ToolName.CODE_CHANGES, incident_id, service)
 
 
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="TraceRoot MCP evidence server")
+    parser.add_argument(
+        "--transport", choices=("stdio", "streamable-http"), default="stdio"
+    )
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    args = parser.parse_args(argv)
+    # A separate server uses fixtures unless its own process configures a live backend.
+    # Client-side live registries and configuration are not transferred over MCP.
+    if args.transport == "stdio":
+        mcp.run()
+    else:
+        mcp.run(transport=args.transport, host=args.host, port=args.port)
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()
